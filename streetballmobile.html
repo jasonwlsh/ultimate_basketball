@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>STREETBALL ULTIMATE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0; overflow: hidden; background-color: #111;
+            font-family: 'Press Start 2P', cursive;
+            display: flex; justify-content: center; align-items: center;
+            height: 100vh; width: 100vw; 
+            user-select: none; 
+            -webkit-user-select: none;
+            touch-action: none; 
+        }
+        #game-wrapper {
+            width: 960px; height: 600px; position: relative;
+            transition: transform 0.3s ease;
+        }
+        #game-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            box-shadow: 0 0 50px rgba(0,0,0,0.9); border: 4px solid #444;
+            border-radius: 12px; overflow: hidden; background-color: #2c3e50;
+            image-rendering: pixelated; 
+        }
+        canvas { display: block; image-rendering: pixelated; width: 100%; height: 100%; }
+        
+        /* Utility */
+        .hidden { display: none !important; }
+        
+        button, .card, .settings-btn, input {
+            touch-action: manipulation;
+            cursor: pointer;
+        }
+
+        .shake { animation: shake-anim 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake-anim {
+            10%, 90% { transform: translate3d(-2px, 1px, 0); }
+            20%, 80% { transform: translate3d(2px, -1px, 0); }
+            30%, 50%, 70% { transform: translate3d(-5px, 2px, 0); }
+            40%, 60% { transform: translate3d(5px, -2px, 0); }
+        }
+
+        .ui-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+        }
+        
+        /* Top Bar Layout */
+        .top-bar {
+            position: absolute; top: 0; left: 0; width: 100%;
+            display: flex; justify-content: space-between; align-items: flex-start;
+            padding: 30px 40px; box-sizing: border-box;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 100%);
+            height: 150px; pointer-events: none;
+        }
+
+        .score-container { display: flex; gap: 15px; pointer-events: auto; }
+        .balls-container { display: flex; gap: 15px; pointer-events: auto; }
+
+        /* --- 80s Retro Buttons --- */
+        .retro-btn {
+            height: 40px; padding: 0 15px;
+            font-size: 0.8rem; border-radius: 4px; 
+            display: flex; justify-content: center; align-items: center;
+            pointer-events: auto; z-index: 80; transition: 0.1s;
+            font-family: 'Press Start 2P';
+            text-shadow: 1px 1px 0 #000;
+            box-shadow: 0 6px 0 rgba(0,0,0,0.4);
+            text-transform: uppercase;
+        }
+        .retro-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.4); }
+
+        .settings-btn {
+            position: absolute; top: 35px; right: 25px;
+            background: #7f8c8d; border: 2px solid #bdc3c7; color: #fff;
+        }
+        .settings-btn:hover { background: #95a5a6; }
+
+        .rank-btn {
+            position: absolute; top: 35px; left: 25px;
+            background: #f39c12; border: 2px solid #f1c40f; color: #fff;
+        }
+        .rank-btn:hover { background: #e67e22; }
+        
+        /* New Exit Button */
+        .exit-btn {
+            position: absolute; bottom: 20px; left: 30px;
+            background: #e74c3c; border: 2px solid #c0392b; color: #fff;
+        }
+        .exit-btn:hover { background: #ff6b6b; }
+
+        /* --- Modals --- */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100; display: flex;
+            justify-content: center; align-items: center; backdrop-filter: blur(5px);
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: #2c3e50; border: 4px solid #f1c40f; padding: 25px;
+            border-radius: 0; width: 85%; max-width: 480px; color: #fff;
+            box-shadow: 10px 10px 0 rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; gap: 20px;
+            max-height: 80vh; overflow-y: auto;
+        }
+        .modal-header { 
+            font-size: 1.5rem; text-align: center; color: #f1c40f; 
+            margin-bottom: 10px; text-transform: uppercase; 
+            text-shadow: 3px 3px 0 #c0392b; letter-spacing: 2px;
+        }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; }
+        .setting-label { color: #bdc3c7; flex: 1; text-align: left;}
+        input[type=range] { flex: 1; margin: 0 15px; cursor: pointer; accent-color: #f1c40f;}
+        .setting-val { width: 50px; text-align: right; color: #00e676; font-size: 0.8rem;}
+        
+        /* Color Control & Lock UI */
+        .color-control-wrapper {
+             display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+        .color-control { display: flex; align-items: center; gap: 10px; }
+        .color-preview-container { position: relative; width: 32px; height: 32px; }
+        .color-preview { 
+            width: 100%; height: 100%; border: 4px solid #fff; border-radius: 50%; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.5); box-sizing: border-box;
+        }
+        .lock-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 14px;
+        }
+        .lock-msg { font-size: 0.5rem; color: #e74c3c; text-align: center; height: 10px; margin-top: 5px;}
+        
+        .arrow-btn { 
+            background: #3498db; border: 2px solid #fff; color: white; 
+            padding: 5px 10px; font-family: 'Press Start 2P'; cursor: pointer; 
+            font-size: 0.8rem; box-shadow: 0 4px 0 #2980b9;
+        }
+        .arrow-btn:active { transform: translateY(4px); box-shadow: none; }
+        
+        .modal-btn {
+            padding: 15px; background: #3498db; color: #fff; border: 2px solid #fff;
+            font-family: 'Press Start 2P'; cursor: pointer; 
+            margin-top: 10px; text-align: center; font-size: 1rem;
+            box-shadow: 0 6px 0 #2980b9;
+        }
+        .modal-btn:active { background: #2980b9; transform: translateY(4px); box-shadow: 0 2px 0 #2980b9; }
+        .close-btn { background: #e74c3c; margin-top: 0; box-shadow: 0 6px 0 #c0392b; }
+        .close-btn:active { background: #c0392b; box-shadow: 0 2px 0 #c0392b; }
+
+        /* Switch */
+        .switch { position: relative; display: inline-block; width: 60px; height: 28px; flex-shrink: 0;}
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #444; transition: .2s; border-radius: 0; border: 2px solid #fff;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px;
+            background-color: white; transition: .2s; 
+        }
+        input:checked + .slider { background-color: #f1c40f; }
+        input:checked + .slider:before { transform: translateX(32px); }
+
+        /* Upload Form */
+        .upload-form { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border: 2px solid #555; }
+        .name-input { 
+            padding: 15px; font-family: 'Press Start 2P'; background: #111; 
+            border: 2px solid #fff; color: #f1c40f; text-align: center; font-size: 1rem;
+        }
+        .upload-btn { background: #00e676; color: #000; box-shadow: 0 6px 0 #00b894; }
+        .upload-btn:active { box-shadow: 0 2px 0 #00b894; }
+        .upload-btn:disabled { background: #555; color: #888; cursor: not-allowed; box-shadow: none; }
+
+        /* --- Game UI --- */
+        .player-panel {
+            display: flex; flex-direction: column; gap: 4px; transition: 0.3s; opacity: 0.6; 
+            transform: scale(0.9); align-items: center;
+            background: rgba(0,0,0,0.4); padding: 10px; border: 2px solid #555; border-radius: 8px;
+        }
+        .player-panel.active {
+            opacity: 1; transform: scale(1.05);
+            border-color: #f1c40f;
+            box-shadow: 0 0 15px rgba(241, 196, 15, 0.2);
+        }
+        .player-label { font-size: 0.6rem; color: #aaa; letter-spacing: 1px; margin-bottom: 2px;}
+        
+        .score-display { 
+            font-size: 2.2rem; color: #fff; text-shadow: 3px 3px 0 #000;
+            letter-spacing: 2px; line-height: 1;
+        }
+
+        .p1-group.active .score-display { color: #f1c40f; }
+        .p2-group.active .score-display { color: #00ffff; }
+
+        /* Optimized Center Info - Absolute Center */
+        .center-info { 
+            position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+            text-align: center; color: #fff; 
+            display: flex; flex-direction: column; align-items: center; gap: 8px;
+            width: 300px; pointer-events: none;
+        }
+        
+        /* Ball Count */
+        .ball-display-box {
+            background: rgba(0,0,0,0.8); border: 2px solid #fff;
+            padding: 8px 12px; border-radius: 8px; text-align: center;
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        .ball-display-box.pop { transform: scale(1.2); border-color: #00e676; }
+        .ball-label { font-size: 0.5rem; color: #aaa; display: block; margin-bottom: 4px;}
+        .ball-count-num { font-size: 1.2rem; color: #2ecc71; }
+        
+        /* Tutorial Msg */
+        .tutorial-text {
+            position: absolute; top: 60%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 1.5rem; color: #fff; text-shadow: 2px 2px 0 #000;
+            animation: blink 1s infinite; pointer-events: none; width: 100%; text-align: center;
+            z-index: 30;
+        }
+
+        .status-text {
+            font-size: 0.9rem; text-shadow: 2px 2px 0 #000;
+            padding: 6px 12px; border-radius: 4px; letter-spacing: 1px;
+        }
+        .streak-txt { color: #ff5722; background: rgba(0,0,0,0.8); border: 2px solid #ff5722; display: none; }
+        .rainbow-txt { 
+            color: #fff; background: linear-gradient(90deg, #8e44ad, #3498db, #2ecc71, #f1c40f, #e74c3c); 
+            border: 2px solid #fff; display: none; animation: rainbow-bg 3s infinite linear;
+        }
+        .x2-txt {
+            color: #f1c40f; background: rgba(0,0,0,0.8); border: 2px solid #f1c40f; display: none;
+            animation: pulse-gold 1s infinite; margin-top: 5px;
+        }
+        
+        .streak-txt.show, .rainbow-txt.show, .x2-txt.show { display: block; animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        
+        @keyframes pop-in { from { transform: scale(0); } to { transform: scale(1); } }
+        @keyframes rainbow-bg { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes blink { 50% { opacity: 0; } }
+        @keyframes pulse-gold { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        .powerup-bar {
+            position: absolute; bottom: 20px; right: 30px; left: auto; width: auto;
+            display: flex; gap: 15px;
+            pointer-events: auto; z-index: 20;
+        }
+        .card {
+            background: #1a1a1a; border: 3px solid #444; color: #ddd;
+            padding: 12px 5px; width: 110px; text-align: center; border-radius: 6px;
+            cursor: pointer; transition: 0.1s; box-shadow: 0 4px 0 #000; opacity: 0.9; 
+            position: relative; user-select: none;
+        }
+        .card:active { transform: translateY(4px); box-shadow: 0 0 0 #000; }
+        .card.active { 
+            border-color: #f1c40f; background: #333; color: #fff;
+            transform: translateY(-4px); box-shadow: 0 8px 0 rgba(241, 196, 15, 0.3);
+        }
+        .card.disabled { opacity: 0.4; pointer-events: none; filter: grayscale(100%); border-color: #333;}
+        .card-icon { font-size: 1.4rem; display: block; margin-bottom: 6px; }
+        .card-name { font-size: 0.6rem; letter-spacing: 1px; display: block; margin-bottom: 6px; }
+        .card-count { 
+            font-size: 0.7rem; color: #111; background: #00e676; 
+            padding: 2px 8px; border-radius: 4px; display: inline-block;
+        }
+
+        #msg {
+            position: absolute; top: 35%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3rem; color: #fff; text-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            opacity: 0; transition: 0.1s; white-space: nowrap; z-index: 15; pointer-events: none;
+        }
+        #msg.pop { opacity: 1; transform: translate(-50%, -80%) scale(1.2); }
+
+        .overlay-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: white; 
+            pointer-events: auto; z-index: 50; backdrop-filter: blur(5px);
+        }
+        .overlay-screen.hidden { display: none !important; } 
+        
+        .title-text { 
+            font-size: 3.5rem; color: #f1c40f; margin-bottom: 5px; margin-top: 0;
+            text-shadow: 6px 6px 0 #c0392b; text-align: center; line-height: 1.2;
+            letter-spacing: 2px;
+        }
+        .subtitle { font-size: 0.8rem; color: #aaa; margin-bottom: 20px; letter-spacing: 1px; }
+        
+        /* High Score Style */
+        .highscore-display {
+            font-size: 0.8rem; color: #ffd700; margin-bottom: 20px; 
+            text-shadow: 2px 2px 0 #000; letter-spacing: 1px;
+        }
+        .new-record-anim {
+            animation: blink-gold 0.5s infinite alternate;
+            color: #ffd700;
+        }
+        @keyframes blink-gold { from { opacity: 0.5; text-shadow: 0 0 10px #fff; } to { opacity: 1; text-shadow: 0 0 20px #ffd700; } }
+
+        .menu-btn {
+            font-family: 'Press Start 2P'; font-size: 1.2rem;
+            padding: 20px 0; margin: 8px; background: #3498db; color: white;
+            border: 4px solid #fff; border-radius: 0; cursor: pointer; 
+            box-shadow: 0 8px 0 #2980b9; transition: 0.1s; width: 100%;
+            text-align: center;
+        }
+        .menu-btn:active { transform: translateY(4px); box-shadow: 0 4px 0 #2980b9; }
+        .menu-btn.p2 { background: #e91e63; box-shadow: 0 8px 0 #c2185b; }
+        .menu-btn.p2:active { box-shadow: 0 4px 0 #c2185b; }
+        
+        #turn-msg {
+            position: absolute; top: 45%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 3.5rem; color: #fff; text-shadow: 4px 4px 0 #000;
+            pointer-events: none; opacity: 0; transition: 0.3s; z-index: 40; white-space: nowrap;
+        }
+        #turn-msg.show { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+
+        /* Start Screen Layout - Split Columns */
+        .start-content {
+            display: flex; flex-direction: column; align-items: center; width: 100%;
+            transform: scale(0.95);
+        }
+        
+        /* Vertical Alignment Fix */
+        .start-main-layout {
+            display: flex; flex-direction: row; justify-content: center; align-items: center;
+            gap: 40px; width: 100%; margin-top: 20px;
+        }
+        .start-left-col, .start-right-col {
+            display: flex; flex-direction: column; align-items: center;
+        }
+        
+        .start-input-group {
+            display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; align-items: center;
+            background: rgba(0,0,0,0.4); padding: 15px; border-radius: 8px; border: 1px solid #444;
+            width: 300px; box-sizing: border-box;
+        }
+        .name-input-main {
+            padding: 12px; font-family: 'Press Start 2P'; background: #111; 
+            border: 3px solid #f1c40f; color: #fff; text-align: center; font-size: 1rem;
+            width: 100%; text-transform: uppercase; box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+            box-sizing: border-box;
+        }
+        .name-input-main::placeholder { color: #555; }
+        .input-label { font-size: 0.6rem; color: #bdc3c7; letter-spacing: 1px; white-space: nowrap;}
+
+        /* Start Screen Leaderboard */
+        .start-lb-container {
+            background: rgba(20, 20, 30, 0.9);
+            border: 2px solid #555;
+            padding: 15px;
+            border-radius: 8px;
+            width: 320px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+        .start-lb-title {
+            text-align: center; color: #f1c40f; font-size: 0.8rem; 
+            margin-bottom: 10px; text-shadow: 1px 1px 0 #000;
+        }
+        .start-lb-table { width: 100%; font-size: 0.7rem; border-collapse: collapse; }
+        .start-lb-table td { padding: 8px 2px; border-bottom: 1px solid #333; }
+        .start-lb-table tr:last-child td { border-bottom: none; }
+        .slb-rank { color: #aaa; width: 25px; }
+        .slb-name { color: #fff; text-align: left;}
+        .slb-score { color: #00e676; text-align: right; }
+        .slb-loading { text-align: center; color: #777; font-size: 0.6rem; padding: 10px;}
+
+        /* Rank Result */
+        .rank-result-box {
+            background: rgba(241, 196, 15, 0.1); border: 2px solid #f1c40f;
+            padding: 20px; margin: 20px 0; width: 300px; text-align: center;
+            animation: pop-in 0.5s; display: none;
+        }
+        .rank-result-box.show { display: block; }
+        .rank-title { font-size: 0.8rem; color: #f1c40f; margin-bottom: 10px; }
+        .rank-val { font-size: 1.5rem; color: #fff; text-shadow: 2px 2px 0 #000; }
+        .rank-percentile { font-size: 0.8rem; color: #00e676; margin-top: 5px; }
+        .rank-loading { font-size: 0.8rem; color: #aaa; animation: blink 1s infinite; }
+        .skin-unlock-txt { color: #ffd700; font-size: 0.7rem; margin-top: 10px; animation: blink 1s infinite; }
+        
+        /* History Modal Styles */
+        .history-table { width: 100%; font-size: 0.6rem; border-collapse: collapse; text-align: left;}
+        .history-table thead tr { color: #f1c40f; text-shadow: 1px 1px 0 #000; }
+        .history-table td { padding: 5px 0; border-bottom: 1px dotted #333; }
+        .history-table tbody tr:last-child td { border-bottom: none; }
+        .history-table .hist-score { color: #00e676; text-align: right; width: 60px;}
+        .history-table .hist-time { color: #aaa; width: 70px;}
+        .history-table .hist-name { color: #fff;}
+        .history-loading { text-align: center; color: #7f8c8d; padding: 15px;}
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <div id="game-container">
+        <canvas id="gameCanvas" width="960" height="600"></canvas>
+        
+        <button class="retro-btn settings-btn" id="btn-open-settings">SETTINGS ⚙️</button>
+
+        <div class="ui-layer" id="game-ui" style="display:none;">
+            <div class="top-bar">
+                <!-- Left Side: Scores -->
+                <div class="score-container">
+                    <div class="player-panel p1-group" id="p1-panel">
+                        <div class="player-label">P1 SCORE</div>
+                        <div class="score-display"><span id="score-p1">0</span></div>
+                    </div>
+                    
+                    <div class="player-panel p2-group" id="p2-panel">
+                        <div class="player-label">P2 SCORE</div>
+                        <div class="score-display"><span id="score-p2">0</span></div>
+                    </div>
+                </div>
+                
+                <!-- Center: Status (Absolute Center) -->
+                <div class="center-info">
+                    <div class="status-text streak-txt" id="fireVal">🔥 FIRE!</div>
+                    <div class="status-text rainbow-txt" id="rainbowVal">🌈 RAINBOW</div>
+                    <div class="status-text x2-txt" id="x2Val">✖️2 ACTIVE</div>
+                </div>
+                
+                <!-- Right Side: Balls -->
+                <div class="balls-container">
+                     <div class="ball-display-box p1-balls" id="ballDisplay">
+                        <span class="ball-label">P1 BALLS</span>
+                        <span class="ball-count-num" id="ballVal">6</span>
+                    </div>
+                    <!-- Placeholder for P2 balls if needed, currently reusing UI logic to switch display context or we can add a second box -->
+                    <div class="ball-display-box p2-balls hidden" id="ballDisplayP2">
+                         <span class="ball-label">P2 BALLS</span>
+                        <span class="ball-count-num" id="ballValP2">6</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="msg">SWISH!</div>
+            <div id="tutorial-msg" class="tutorial-text hidden">CLICK OR TAP TO SHOOT!</div>
+
+            <button class="retro-btn exit-btn" id="btn-exit-game">EXIT</button>
+
+            <div class="powerup-bar">
+                <div class="card" id="card-x2">
+                    <span class="card-icon">✖️2</span>
+                    <span class="card-name">POINTS</span>
+                    <span class="card-count" id="count-x2">x2</span>
+                </div>
+                <div class="card" id="card-big">
+                    <span class="card-icon">⭕</span>
+                    <span class="card-name">BIG HOOP</span>
+                    <span class="card-count" id="count-big">x2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">SETTINGS</div>
+                
+                <div class="setting-row">
+                    <span class="setting-label">PORTRAIT MODE</span>
+                    <label class="switch">
+                        <input type="checkbox" id="set-rotate">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">BALL COLOR</span>
+                    <div class="color-control-wrapper">
+                        <div class="color-control">
+                            <button class="arrow-btn" id="btn-col-prev">◀</button>
+                            <div class="color-preview-container">
+                                <div class="color-preview" id="col-preview" style="background:#e67e22;"></div>
+                                <div class="lock-overlay hidden" id="lock-overlay">🔒</div>
+                            </div>
+                            <button class="arrow-btn" id="btn-col-next">▶</button>
+                        </div>
+                        <div class="lock-msg" id="lock-msg"></div>
+                    </div>
+                </div>
+
+                <div class="setting-row">
+                    <span class="setting-label">BOUNCE</span>
+                    <input type="range" id="set-bounce" min="1" max="9" value="6">
+                    <span class="setting-val" id="val-bounce">0.6</span>
+                </div>
+                
+                <div style="font-size: 0.6rem; color: #7f8c8d; text-align: center; margin-top: 10px;">
+                    GRAVITY FIXED AT 0.6G FOR RANKING FAIRNESS
+                </div>
+
+                <button class="modal-btn" id="btn-view-history" style="background: #e67e22; box-shadow: 0 6px 0 #d35400;">VIEW HISTORY</button>
+                <button class="modal-btn" id="btn-close-settings">SAVE & CLOSE</button>
+            </div>
+        </div>
+        
+        <!-- History Modal -->
+        <div id="history-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">RECENT GAME HISTORY</div>
+                <div id="history-content-el">
+                    <div class="history-loading">LOADING HISTORY...</div>
+                </div>
+                <button class="modal-btn close-btn" id="btn-close-history">CLOSE</button>
+            </div>
+        </div>
+
+        <div id="start-screen" class="overlay-screen">
+            <div class="start-content">
+                <div class="title-text">STREETBALL<br>ULTIMATE</div>
+                
+                <div class="start-main-layout">
+                    <!-- Left Column: Leaderboard -->
+                    <div class="start-left-col">
+                        <div class="start-lb-container">
+                            <div class="start-lb-title">🏆 TOP 5 LEGENDS</div>
+                            <div id="start-lb-content">
+                                <div class="slb-loading">LOADING RANKS...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Controls -->
+                    <div class="start-right-col">
+                        <div class="highscore-display">PERSONAL BEST: <span id="menu-best">0</span></div>
+                        
+                        <!-- Input Group -->
+                        <div class="start-input-group">
+                            <div class="input-label">ENTER NICKNAME (1P RANK)</div>
+                            <input type="text" id="input-name" class="name-input-main" placeholder="PLAYER" maxlength="10" value="">
+                        </div>
+
+                        <button class="menu-btn" id="btn-1p">1 PLAYER START</button>
+                        <button class="menu-btn p2" id="btn-2p">2 PLAYERS (VS)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="turn-msg">P1 READY</div>
+
+        <div id="game-over" class="overlay-screen hidden">
+            <div class="title-text" id="go-title">GAME OVER</div>
+            <div id="new-record-msg" class="new-record-anim hidden" style="font-size: 1.2rem; margin-bottom: 10px;">NEW PERSONAL RECORD!</div>
+            
+            <div style="font-size: 1.5rem; margin-bottom: 10px; text-align: center; line-height: 2;">
+                <div style="color:#f1c40f;">SCORE: <span id="end-p1">0</span></div>
+                <div id="p2-end-score" style="color:#00ffff;">P2 SCORE: <span id="end-p2">0</span></div>
+            </div>
+
+            <!-- Auto Rank Result -->
+            <div id="rank-result-box" class="rank-result-box">
+                <div class="rank-title" id="rank-status-text">CHECKING GLOBAL RANK...</div>
+                <div class="rank-val" id="rank-val-text"><span class="rank-loading">...</span></div>
+                <div id="rank-percentile-text" class="rank-percentile"></div>
+                <div id="skin-unlock-msg" class="skin-unlock-txt hidden">✨ SKIN UNLOCKED: GOLDEN BALL ✨</div>
+            </div>
+
+            <button class="menu-btn" id="btn-restart" style="margin-top: 20px;">MAIN MENU</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, setDoc, doc, getDoc, serverTimestamp, query, where, deleteDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // --- Firebase Init ---
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    
+    let currentUser = null;
+    let currentPlayerName = "";
+
+    async function initAuth() {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+            currentUser = auth.currentUser;
+            fetchLeaderboardDisplay(); 
+            loadProfileFromCloud(); 
+        } catch (e) {
+            console.error("Auth failed", e);
+        }
+    }
+    initAuth();
+    
+    // --- NEW: Log every score to a history collection ---
+    async function logScoreHistory(name, score) {
+        if (!currentUser || score <= 0) return;
+        try {
+            const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'score_history');
+            await addDoc(historyRef, {
+                name: name,
+                score: score,
+                uid: currentUser.uid,
+                date: serverTimestamp()
+            });
+        } catch (e) {
+            console.error("Error logging score history:", e);
+        }
+    }
+
+    // --- History Modal Logic ---
+    const historyModal = document.getElementById('history-modal');
+    const historyContentEl = document.getElementById('history-content-el');
+    const btnViewHistory = document.getElementById('btn-view-history');
+    const btnCloseHistory = document.getElementById('btn-close-history');
+
+    btnViewHistory.onclick = () => fetchScoreHistory();
+    btnCloseHistory.onclick = () => historyModal.classList.add('hidden');
+
+    async function fetchScoreHistory() {
+        if (!currentUser) return;
+        historyContentEl.innerHTML = '<div class="history-loading">LOADING HISTORY...</div>';
+        settingsModal.classList.add('hidden');
+        historyModal.classList.remove('hidden');
+
+        try {
+            const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'score_history');
+            const q = query(historyRef, orderBy('date', 'desc'), limit(10)); // Get last 10 games
+            const snapshot = await getDocs(q);
+            
+            if (snapshot.empty) {
+                historyContentEl.innerHTML = '<div class="history-loading">NO HISTORY YET. START SHOOTING!</div>';
+                return;
+            }
+
+            let html = '<table class="history-table"><thead><tr><td class="hist-time">TIME</td><td class="hist-name">NAME</td><td class="hist-score">SCORE</td></tr></thead><tbody>';
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const score = data.score;
+                const name = escapeHtml(data.name);
+                // Convert Firestore Timestamp to formatted time
+                const date = data.date?.toDate() ? data.date.toDate().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }) : 'N/A';
+                
+                html += `<tr><td class="hist-time">${date}</td><td class="hist-name">${name}</td><td class="hist-score">${score}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            historyContentEl.innerHTML = html;
+
+        } catch (e) {
+            console.error("Error fetching history:", e);
+            historyContentEl.innerHTML = '<div class="history-loading" style="color:#e74c3c">ERROR FETCHING DATA</div>';
+        }
+    }
+
+
+    // --- Leaderboard Logic ---
+    const rankResultBox = document.getElementById('rank-result-box');
+    const rankStatusText = document.getElementById('rank-status-text');
+    const rankValText = document.getElementById('rank-val-text');
+    const rankPercentileText = document.getElementById('rank-percentile-text'); 
+    const startLbContent = document.getElementById('start-lb-content');
+    const skinUnlockMsg = document.getElementById('skin-unlock-msg');
+
+    async function fetchLeaderboardDisplay() {
+        if (!currentUser) return;
+        startLbContent.innerHTML = '<div class="slb-loading">LOADING RANKS...</div>';
+        
+        try {
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            const snapshot = await getDocs(colRef);
+            let scores = processScores(snapshot);
+            
+            // Remove duplicates (keep only the highest score per UID) for display
+            let uniqueScores = removeScoreDuplicates(scores);
+            uniqueScores = uniqueScores.slice(0, 5);
+
+            if (uniqueScores.length === 0) {
+                startLbContent.innerHTML = '<div class="slb-loading">NO RECORDS YET. BE THE FIRST!</div>';
+                return;
+            }
+
+            let html = '<table class="start-lb-table">';
+            uniqueScores.forEach((s, i) => {
+                let rankColor = i === 0 ? '#ffd700' : (i === 1 ? '#c0c0c0' : (i === 2 ? '#cd7f32' : '#777'));
+                html += `<tr><td class="slb-rank" style="color:${rankColor}">${i+1}.</td><td class="slb-name">${escapeHtml(s.name)}</td><td class="slb-score">${s.score}</td></tr>`;
+            });
+            html += '</table>';
+            startLbContent.innerHTML = html;
+        } catch (e) {
+            console.error(e);
+            startLbContent.innerHTML = '<div class="slb-loading" style="color:#e74c3c">ERROR</div>';
+        }
+    }
+
+    function processScores(snapshot) {
+        let scores = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.score !== undefined && data.name) scores.push({...data, id: doc.id}); // Include doc ID for deletion
+        });
+        scores.sort((a, b) => b.score - a.score);
+        return scores;
+    }
+
+    // New helper to ensure we only compare against each user's best score
+    function removeScoreDuplicates(allScores) {
+        const uniquePlayers = {};
+        allScores.forEach(s => {
+            // Only store the highest score per unique UID
+            if (!uniquePlayers[s.uid] || s.score > uniquePlayers[s.uid].score) {
+                uniquePlayers[s.uid] = s;
+            }
+        });
+        return Object.values(uniquePlayers).sort((a, b) => b.score - a.score);
+    }
+
+    async function handleAutoUpload(name, score) {
+        if (!currentUser) return;
+        rankResultBox.classList.add('show');
+        rankStatusText.innerText = "CHECKING GLOBAL RANK...";
+        rankValText.innerHTML = '<span class="rank-loading">...</span>';
+        rankPercentileText.innerText = ""; // Clear percentile text initially
+        skinUnlockMsg.classList.add('hidden');
+
+        try {
+            // Log score to history collection first
+            if (score > 0) {
+                await logScoreHistory(name, score);
+            }
+            
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+            
+            // 1. 檢查玩家的最高紀錄
+            const userQuery = query(colRef, where("uid", "==", currentUser.uid));
+            const userSnapshot = await getDocs(userQuery);
+            
+            let userScores = [];
+            userSnapshot.forEach(doc => {
+                 userScores.push({ score: doc.data().score, id: doc.id });
+            });
+            
+            let currentBestScore = userScores.reduce((max, s) => Math.max(max, s.score), 0);
+            
+            // 2. 判斷是否需要更新「最高分排行榜」
+            if (score > currentBestScore) {
+                
+                // A. 刪除所有舊紀錄 (防止洗榜/重複)
+                const deletePromises = userScores.map(s => deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', s.id)));
+                await Promise.all(deletePromises);
+
+                // B. 上傳新的最高紀錄
+                await addDoc(colRef, {
+                    name: name, score: score, uid: currentUser.uid, date: serverTimestamp()
+                });
+
+                // C. 重新計算排名和百分比
+                const updatedSnapshot = await getDocs(colRef);
+                const allScores = processScores(updatedSnapshot); // List of all scores ever recorded
+                
+                // Get list of unique BEST scores for comparison
+                const uniqueBestScores = removeScoreDuplicates(allScores);
+                
+                // Calculate Rank: find the index of the current user's UID in the unique list
+                let myRank = uniqueBestScores.findIndex(s => s.uid === currentUser.uid) + 1;
+                
+                // Calculate Percentile
+                let totalUniquePlayers = uniqueBestScores.length;
+                let lowerCount = uniqueBestScores.filter(s => score > s.score).length;
+                
+                let percentile = 0;
+                if (totalUniquePlayers > 0) {
+                    percentile = (lowerCount / totalUniquePlayers) * 100;
+                    percentile = Math.round(percentile); 
+                    if (totalUniquePlayers === 1) percentile = 100;
+                }
+                
+                rankStatusText.innerText = "NEW RECORD!";
+                rankStatusText.style.color = "#ffd700";
+                rankValText.innerHTML = `GLOBAL RANK #${myRank}`;
+                rankValText.style.color = "#00e676";
+                rankPercentileText.innerText = `BETTER THAN ${percentile}% OF USERS`;
+
+
+                // Unlock Skin Check
+                if (myRank <= 5 && !isGoldUnlocked) {
+                    isGoldUnlocked = true;
+                    skinUnlockMsg.classList.remove('hidden');
+                    saveProfileToCloud(); // Save unlock status
+                }
+
+            } else {
+                // 分數不夠高，不執行上傳和清理
+                rankStatusText.innerText = "SCORE LOGGED";
+                rankStatusText.style.color = "#bdc3c7";
+                rankValText.innerHTML = `BEST: ${currentBestScore}`;
+                rankValText.style.color = "#7f8c8d";
+            }
+            fetchLeaderboardDisplay();
+
+        } catch (e) {
+            console.error("Upload/Rank Check Error:", e);
+            rankStatusText.innerText = "CONNECTION ERROR";
+            rankValText.innerText = "OFFLINE";
+            rankPercentileText.innerText = "";
+        }
+    }
+
+    // --- Cloud Profile Logic ---
+    async function loadProfileFromCloud() {
+        if (!currentUser) return;
+        try {
+            const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'profile');
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.highScore > localHighScore) {
+                    localHighScore = data.highScore;
+                    updateLocalHighScoreDisplay();
+                }
+                if (data.skinGold) {
+                    isGoldUnlocked = true;
+                }
+                // Auto-fill last name if available
+                if (data.playerName) {
+                    inputName.value = data.playerName;
+                }
+                
+                localStorage.setItem('bs_highscore', localHighScore);
+                localStorage.setItem('bs_skin_gold', isGoldUnlocked);
+            }
+        } catch (e) {
+            console.error("Error loading profile:", e);
+        }
+    }
+
+    async function saveProfileToCloud() {
+        if (!currentUser) return;
+        try {
+            const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'profile');
+            await setDoc(docRef, {
+                highScore: localHighScore,
+                skinGold: isGoldUnlocked,
+                playerName: currentPlayerName, // Save name too
+                lastUpdated: serverTimestamp()
+            });
+        } catch (e) {
+            console.error("Error saving profile:", e);
+        }
+    }
+
+    function escapeHtml(text) {
+        if (!text) return "";
+        return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // --- Game Logic ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // UI References
+    const uiLayer = document.getElementById('game-ui');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over');
+    const turnMsg = document.getElementById('turn-msg');
+    
+    const p1Panel = document.getElementById('p1-panel');
+    const p2Panel = document.getElementById('p2-panel');
+    const scoreP1El = document.getElementById('score-p1');
+    const scoreP2El = document.getElementById('score-p2');
+    
+    const ballEl = document.getElementById('ballVal');
+    const ballElP2 = document.getElementById('ballValP2'); 
+    
+    const fireVal = document.getElementById('fireVal');
+    const rainbowVal = document.getElementById('rainbowVal');
+    const x2Val = document.getElementById('x2Val');
+    const msgEl = document.getElementById('msg');
+    const menuBestEl = document.getElementById('menu-best');
+    const newRecordMsg = document.getElementById('new-record-msg');
+    const inputName = document.getElementById('input-name');
+    
+    const btn1P = document.getElementById('btn-1p');
+    const btn2P = document.getElementById('btn-2p');
+    const btnRestart = document.getElementById('btn-restart');
+    const btnExitGame = document.getElementById('btn-exit-game'); 
+
+    // Settings UI
+    const btnOpenSettings = document.getElementById('btn-open-settings');
+    const btnCloseSettings = document.getElementById('btn-close-settings');
+    const settingsModal = document.getElementById('settings-modal');
+    const inputRotate = document.getElementById('set-rotate');
+    const inputBounce = document.getElementById('set-bounce');
+    const valBounce = document.getElementById('val-bounce');
+    const btnColPrev = document.getElementById('btn-col-prev');
+    const btnColNext = document.getElementById('btn-col-next');
+    const colPreview = document.getElementById('col-preview');
+    const lockOverlay = document.getElementById('lock-overlay');
+    const lockMsg = document.getElementById('lock-msg');
+    
+    const cardX2 = document.getElementById('card-x2');
+    const cardBig = document.getElementById('card-big');
+    const countX2El = document.getElementById('count-x2');
+    const countBigEl = document.getElementById('count-big');
+
+    const gameWrapper = document.getElementById('game-wrapper');
+    const gameContainer = document.getElementById('game-container');
+
+    ctx.imageSmoothingEnabled = false;
+
+    // --- High Score & Unlocks Logic ---
+    let localHighScore = parseInt(localStorage.getItem('bs_highscore')) || 0;
+    let isGoldUnlocked = localStorage.getItem('bs_skin_gold') === 'true';
+    let savedName = localStorage.getItem('bs_playername');
+    if (savedName) inputName.value = savedName;
+
+    function updateLocalHighScoreDisplay() { menuBestEl.innerText = localHighScore; }
+    updateLocalHighScoreDisplay();
+
+    // --- Responsive Logic ---
+    let isRotated = false;
+
+    function resize() {
+        const winW = window.innerWidth;
+        const winH = window.innerHeight;
+        let targetW = 960; let targetH = 600; let scale;
+
+        if (isRotated) {
+            scale = Math.min(winH / targetW, winW / targetH) * 0.95;
+            gameWrapper.style.transform = `rotate(90deg) scale(${scale})`;
+        } else {
+            if (winH > winW) scale = (winW / targetW) * 0.95;
+            else scale = Math.min(winW / targetW, winH / targetH) * 0.95;
+            gameWrapper.style.transform = `rotate(0deg) scale(${scale})`;
+        }
+    }
+    window.addEventListener('resize', resize);
+    
+    // --- Settings Logic ---
+    let ballColors = ['#e67e22', '#00e676', '#3498db', '#9b59b6', '#e91e63', '#ffd700'];
+    let ballColorIdx = 0;
+    let p1Color = ballColors[0];
+
+    function updateColorUI() {
+        const currentColor = ballColors[ballColorIdx];
+        colPreview.style.backgroundColor = currentColor;
+        
+        if (currentColor === '#ffd700' && !isGoldUnlocked) {
+            lockOverlay.classList.remove('hidden');
+            lockMsg.innerText = "REACH TOP 5 TO UNLOCK";
+        } else {
+            lockOverlay.classList.add('hidden');
+            lockMsg.innerText = "";
+        }
+    }
+
+    btnColPrev.onclick = () => {
+        ballColorIdx = (ballColorIdx - 1 + ballColors.length) % ballColors.length;
+        updateColorUI();
+    };
+    btnColNext.onclick = () => {
+        ballColorIdx = (ballColorIdx + 1) % ballColors.length;
+        updateColorUI();
+    };
+
+    btnOpenSettings.onclick = () => {
+        settingsModal.classList.remove('hidden');
+        updateColorUI();
+    };
+    btnCloseSettings.onclick = () => { settingsModal.classList.add('hidden'); applySettings(); };
+
+    inputBounce.oninput = () => valBounce.innerText = (inputBounce.value / 10).toFixed(1);
+
+    function applySettings() {
+        BALL_BOUNCE = inputBounce.value / 10;
+        
+        const selectedColor = ballColors[ballColorIdx];
+        if (selectedColor === '#ffd700' && !isGoldUnlocked) {
+            p1Color = ballColors[0];
+            ballColorIdx = 0;
+        } else {
+            p1Color = selectedColor;
+        }
+
+        let newRotate = inputRotate.checked;
+        if (newRotate !== isRotated) { isRotated = newRotate; resize(); }
+    }
+
+    // --- Physics ---
+    const GRAVITY = 0.6; 
+    const AIR_FRICTION = 0.99;
+    let BALL_BOUNCE = 0.6;
+    const RIM_BOUNCE = 0.55;
+    const GROUND_Y = 520;
+    const THREE_POINT_X = 400;
+    const PIXEL_SIZE = 4;
+
+    const STATE = { AIM_DIST: 0, AIM_HIGH: 1, FLYING: 2, RESET: 3, OVER: 4, MENU: 5 };
+    let gameState = STATE.MENU;
+
+    // --- Player Logic ---
+    let numPlayers = 1;
+    let turnPlayer = 1;
+    const TOTAL_BALLS = 6; 
+
+    const defaultPlayerData = () => ({
+        score: 0, balls: TOTAL_BALLS, streak: 0, isFireball: false, 
+        hasRainbow: false, usingRainbow: false,
+        pu_x2: { count: 2, active: false }, pu_big: { count: 2, active: false },
+        shotsCount: 0
+    });
+
+    let p1 = defaultPlayerData();
+    let p2 = defaultPlayerData();
+    let currP = p1; 
+    
+    let sharedPos = { x: 100, y: 380, isThree: false };
+    let distBar = { val: 0, dir: 1, speed: 0.9 }; 
+    let highBar = { val: 0, dir: 1, speed: 0.9 };
+
+    let HOOP_DEF_W = 70;
+    const HOOP_DEF_X = 800;
+    const HOOP = { x: HOOP_DEF_X, y: 240, w: HOOP_DEF_W, rimR: 4, backX: 880, backW: 10, backH: 110 };
+    
+    let ball = {
+        x: 100, y: 380, r: 16, vx: 0, vy: 0, scored: false, isThree: false, 
+        readyOff: 0, readyDir: 1, hasHitSomething: false, hasHitRim: false, hasHitBoard: false,
+        minDistToHoop: 9999 // For Mercy Rule
+    };
+
+    let floatingItem = { active: false, x: 0, y: 0, type: 'rainbow', offset: 0, dir: 1, scale: 0, spawning: false };
+
+    let particles = [];
+    let floatScores = [];
+    let hue = 0;
+
+    // --- Inputs ---
+    btn1P.onclick = () => {
+        let name = inputName.value.trim().toUpperCase();
+        if (!name) {
+            inputName.style.borderColor = 'red';
+            setTimeout(()=>inputName.style.borderColor='#f1c40f', 500);
+            return;
+        }
+        localStorage.setItem('bs_playername', name);
+        currentPlayerName = name;
+        startGame(1);
+    };
+    btn2P.onclick = () => startGame(2);
+    btnRestart.onclick = () => showStartScreen();
+
+    // Exit Button Logic
+    btnExitGame.onclick = (e) => {
+        e.stopPropagation();
+        showStartScreen();
+    };
+    
+    cardX2.onclick = (e) => { e.stopPropagation(); usePowerup('x2'); };
+    cardBig.onclick = (e) => { e.stopPropagation(); usePowerup('big'); };
+
+    window.addEventListener('pointerdown', (e) => {
+        if (!settingsModal.classList.contains('hidden') || !historyModal.classList.contains('hidden')) return; // Block input if any modal is open
+        if (e.target.closest('.settings-btn') || e.target.closest('.rank-btn')) return;
+        if (!e.target.closest('button') && !e.target.closest('.card') && !e.target.closest('input')) {
+            if(e.type==='touchstart') e.preventDefault();
+            handleGameInput();
+        }
+    });
+    window.addEventListener('keydown', (e) => { if(e.code === 'Space') handleGameInput(); });
+
+    function handleGameInput() {
+        if (gameState === STATE.AIM_DIST) gameState = STATE.AIM_HIGH;
+        else if (gameState === STATE.AIM_HIGH) launchBall();
+    }
+
+    // --- Core Flow ---
+    function showStartScreen() {
+        updateLocalHighScoreDisplay();
+        gameOverScreen.classList.add('hidden');
+        startScreen.classList.remove('hidden');
+        uiLayer.style.display = 'none';
+        gameState = STATE.MENU;
+        
+        btnOpenSettings.style.display = 'flex'; 
+        
+        if(currentUser) fetchLeaderboardDisplay();
+    }
+
+    function startGame(players) {
+        numPlayers = players; turnPlayer = 1;
+        p1 = defaultPlayerData(); p2 = defaultPlayerData();
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        uiLayer.style.display = 'block';
+        
+        btnOpenSettings.style.display = 'none';
+        
+        if (numPlayers === 2) {
+            p2Panel.style.display = 'flex'; 
+            document.getElementById('ballDisplayP2').classList.remove('hidden');
+            document.getElementById('p2-end-score').style.display = 'block';
+        } else {
+            p2Panel.style.display = 'none';
+            document.getElementById('ballDisplayP2').classList.add('hidden');
+            document.getElementById('p2-end-score').style.display = 'none';
+        }
+        
+        startTurn();
+    }
+
+    function startTurn() {
+        currP = (turnPlayer === 1) ? p1 : p2;
+        if (currP.hasRainbow) {
+            currP.usingRainbow = true;
+            currP.hasRainbow = false; 
+        } else {
+            currP.usingRainbow = false;
+        }
+        updateTopBarUI();
+        updatePowerupUI(); 
+        resetRound(true);
+        if (numPlayers === 2) showTurnMessage(`P${turnPlayer} START!`, turnPlayer === 1 ? '#f1c40f' : '#00ffff');
+        
+        const tutorialMsg = document.getElementById('tutorial-msg');
+        if (currP.shotsCount === 0 && turnPlayer === 1) { 
+            tutorialMsg.classList.remove('hidden');
+        } else {
+            tutorialMsg.classList.add('hidden');
+        }
+    }
+
+    function launchBall() {
+        document.getElementById('tutorial-msg').classList.add('hidden'); 
+        gameState = STATE.FLYING;
+        currP.balls--; 
+        updateTopBarUI(); 
+        currP.shotsCount++; 
+        consumePowerups();
+        let vx = (distBar.val / 100) * 24;
+        let vy = -8 - (highBar.val / 100) * 18;
+        ball.vx = vx; ball.vy = vy;
+    }
+
+    function resetRound(isNewTurn = false) {
+        if (p1.balls <= 0 && (numPlayers === 1 || p2.balls <= 0)) { endGame(); return; }
+        
+        if (!isNewTurn && numPlayers === 2) {
+            if ((turnPlayer === 1 && p2.balls > 0) || (turnPlayer === 1 && p1.balls <= 0)) {
+                turnPlayer = 2; setTimeout(startTurn, 100); return;
+            } else if ((turnPlayer === 2 && p1.balls > 0) || (turnPlayer === 2 && p2.balls <= 0)) {
+                turnPlayer = 1; setTimeout(startTurn, 100); return;
+            }
+        }
+        
+        if (numPlayers === 1 && !isNewTurn) {
+             if (currP.hasRainbow) {
+                currP.usingRainbow = true;
+                currP.hasRainbow = false;
+            } else {
+                currP.usingRainbow = false;
+            }
+            updateTopBarUI();
+        }
+        resetPowerupsForRound();
+
+        if (turnPlayer === 1) {
+            let isThree = Math.random() > 0.5;
+            if (isThree) sharedPos.x = 40 + Math.random() * (THREE_POINT_X - 60);
+            else sharedPos.x = THREE_POINT_X + 20 + Math.random() * 200;
+            sharedPos.y = 380 + Math.random() * 40;
+            sharedPos.isThree = sharedPos.x < THREE_POINT_X;
+        }
+
+        ball.x = sharedPos.x;
+        ball.y = sharedPos.y;
+        ball.isThree = sharedPos.isThree;
+        ball.vx = 0; ball.vy = 0; ball.scored = false;
+        ball.hasHitSomething = false; ball.hasHitBoard = false; ball.hasHitRim = false;
+        ball.minDistToHoop = 9999; 
+        particles = [];
+
+        // Deterministic Spawning
+        if (currP.shotsCount === 1) spawnFloatingItem('rainbow');
+        else if (currP.shotsCount === 5) spawnFloatingItem('ball');
+        else floatingItem.active = false;
+
+        distBar.val = 0; distBar.dir = 1;
+        highBar.val = 0; highBar.dir = 1;
+        gameState = STATE.AIM_DIST;
+        updateTopBarUI();
+    }
+
+    function spawnFloatingItem(type) {
+        floatingItem.active = true;
+        floatingItem.spawning = true;
+        floatingItem.scale = 0;
+        let minX = ball.x + 150;
+        let maxX = HOOP.backX - 50;
+        if (minX > maxX) minX = ball.x + 50;
+        floatingItem.x = minX + Math.random() * (maxX - minX);
+        floatingItem.y = 100 + Math.random() * 150;
+        floatingItem.type = type; 
+        let txt = type === 'rainbow' ? "ITEM!" : "+1 BALL";
+        spawnFloatScore(0, floatingItem.x, floatingItem.y, txt);
+    }
+
+    function usePowerup(type) {
+        if (gameState !== STATE.AIM_DIST && gameState !== STATE.AIM_HIGH) return;
+        let puKey = 'pu_' + type;
+        let pu = currP[puKey];
+        if (pu.count > 0) {
+            if (!pu.active) {
+                currP.pu_x2.active = false;
+                currP.pu_big.active = false;
+                pu.active = true;
+            } else pu.active = false;
+            updatePowerupUI(); applyHoopSize(); updateTopBarUI(); 
+        }
+    }
+    function applyHoopSize() {
+        if (currP.pu_big.active) { HOOP.w = 110; HOOP.x = HOOP_DEF_X - 40; } 
+        else { HOOP.w = HOOP_DEF_W; HOOP.x = HOOP_DEF_X; }
+    }
+    function updatePowerupUI() {
+        updateCardStyle(cardX2, currP.pu_x2, countX2El);
+        updateCardStyle(cardBig, currP.pu_big, countBigEl);
+    }
+    function updateCardStyle(el, data, countEl) {
+        if (data.active) el.classList.add('active'); else el.classList.remove('active');
+        if (data.count <= 0) el.classList.add('disabled'); else el.classList.remove('disabled');
+        countEl.innerText = "x" + data.count;
+    }
+    function consumePowerups() {
+        if (currP.pu_x2.active) {
+            currP.pu_x2.count--;
+            x2Val.classList.remove('show'); // FIX: Hide x2 ACTIVE when consumed
+        }
+        if (currP.pu_big.active) currP.pu_big.count--;
+        updatePowerupUI();
+    }
+    function resetPowerupsForRound() {
+        currP.pu_x2.active = false; 
+        currP.pu_big.active = false;
+        x2Val.classList.remove('show'); // Ensure hidden on new round start
+        updatePowerupUI(); applyHoopSize();
+    }
+    function updateTopBarUI() {
+        scoreP1El.innerText = p1.score; scoreP2El.innerText = p2.score;
+        ballEl.innerText = p1.balls; 
+        ballElP2.innerText = p2.balls; 
+        
+        if (turnPlayer === 1) { p1Panel.classList.add('active'); p2Panel.classList.remove('active'); } 
+        else { p1Panel.classList.remove('active'); p2Panel.classList.add('active'); }
+        fireVal.classList.remove('show');
+        rainbowVal.classList.remove('show');
+        if (currP.usingRainbow) rainbowVal.classList.add('show');
+        else if (currP.streak >= 3) { currP.isFireball = true; fireVal.classList.add('show'); } 
+        else currP.isFireball = false; 
+        
+        if (currP.pu_x2.active) x2Val.classList.add('show');
+        
+        const ballBox = (turnPlayer === 1) ? document.getElementById('ballDisplay') : document.getElementById('ballDisplayP2');
+        if (ballBox) {
+            ballBox.classList.remove('pop');
+            void ballBox.offsetWidth; 
+        }
+    }
+
+    function endGame() {
+        gameState = STATE.OVER;
+        document.getElementById('end-p1').innerText = p1.score;
+        document.getElementById('end-p2').innerText = p2.score;
+        let title = "GAME OVER";
+        
+        newRecordMsg.classList.add('hidden');
+        rankResultBox.classList.remove('show');
+        rankPercentileText.innerText = ""; 
+
+        if (numPlayers === 1) {
+            if (p1.score > localHighScore) {
+                localHighScore = p1.score;
+                localStorage.setItem('bs_highscore', localHighScore);
+                newRecordMsg.classList.remove('hidden');
+                updateLocalHighScoreDisplay(); 
+            }
+            if (p1.score > 0 && currentUser) {
+                handleAutoUpload(currentPlayerName, p1.score);
+            }
+            
+            saveProfileToCloud();
+            
+        } else {
+            if (p1.score > p2.score) title = "P1 WINS!";
+            else if (p2.score > p1.score) title = "P2 WINS!";
+            else title = "DRAW GAME";
+        }
+        
+        document.getElementById('go-title').innerText = title;
+        gameOverScreen.classList.remove('hidden');
+    }
+
+    function loop() { update(); draw(); requestAnimationFrame(loop); }
+    resize();
+    requestAnimationFrame(loop);
+
+    function update() {
+        hue += 5;
+        if (gameState === STATE.MENU || gameState === STATE.OVER) return;
+        let speedMult = 1.0;
+        if (currP.usingRainbow) speedMult = 1.5; 
+
+        if (gameState === STATE.AIM_DIST) {
+            distBar.val += distBar.speed * distBar.dir * speedMult;
+            if (distBar.val >= 100 || distBar.val <= 0) distBar.dir *= -1;
+        } else if (gameState === STATE.AIM_HIGH) {
+            highBar.val += highBar.speed * highBar.dir * speedMult;
+            if (highBar.val >= 100 || highBar.val <= 0) highBar.dir *= -1;
+        }
+        if (gameState === STATE.AIM_DIST || gameState === STATE.AIM_HIGH) {
+            ball.readyOff += ball.readyDir * 0.2;
+            if (Math.abs(ball.readyOff) > 4) ball.readyDir *= -1;
+        }
+        if (floatingItem.active) {
+            floatingItem.offset += floatingItem.dir * 0.5;
+            if (Math.abs(floatingItem.offset) > 8) floatingItem.dir *= -1;
+            if (floatingItem.spawning) {
+                floatingItem.scale += 0.1;
+                if (floatingItem.scale >= 1.2) { floatingItem.scale = 1; floatingItem.spawning = false; }
+            }
+        }
+        if (gameState === STATE.FLYING) {
+            ball.vy += GRAVITY;
+            ball.x += ball.vx; ball.y += ball.vy;
+            ball.vx *= AIR_FRICTION; ball.vy *= AIR_FRICTION;
+            
+            // Calculate distance to hoop center for Mercy Rule
+            const hoopCx = HOOP.x + HOOP.w / 2;
+            const hoopCy = HOOP.y;
+            const dist = Math.hypot(ball.x - hoopCx, ball.y - hoopCy);
+            if (dist < ball.minDistToHoop) ball.minDistToHoop = dist;
+            
+            if (ball.y + ball.r > GROUND_Y) {
+                ball.y = GROUND_Y - ball.r; ball.vy *= -BALL_BOUNCE; ball.vx *= 0.9;
+                if (!ball.scored && !ball.hasHitSomething) { handleAirball(); ball.hasHitSomething = true; }
+            }
+            checkCollisions();
+            checkItemCollision();
+            if (currP.usingRainbow) spawnParticles(ball.x, ball.y, 3, [`hsl(${hue}, 70%, 60%)`]);
+            else if (currP.isFireball) spawnParticles(ball.x, ball.y, 2, ['#ff5722', '#f1c40f']);
+
+            if ((ball.x > canvas.width + 50 || ball.x < -50) || 
+                (Math.abs(ball.vy) < 0.5 && Math.abs(ball.vx) < 0.2 && ball.y > GROUND_Y - ball.r - 5)) {
+                if (gameState !== STATE.RESET) {
+                    if (!ball.scored && !ball.hasHitSomething) { handleAirball(); } 
+                    else if (!ball.scored) { 
+                        if(currP.isRainbow) currP.isRainbow = false;
+                        currP.streak = 0; updateTopBarUI(); showMsg("MISS", '#bdc3c7'); 
+                    }
+                    gameState = STATE.RESET;
+                    if (currP.isRainbow) currP.isRainbow = false;
+                    setTimeout(() => resetRound(false), 1000);
+                }
+            }
+        }
+        updateParticles();
+        updateFloatScores();
+    }
+
+    function checkCollisions() {
+        if (ball.x + ball.r > HOOP.backX && ball.x - ball.r < HOOP.backX + HOOP.backW &&
+            ball.y > HOOP.y - 80 && ball.y < HOOP.y + 50) {
+            if (ball.vx > 0) {
+                ball.x = HOOP.backX - ball.r; ball.vx *= -BALL_BOUNCE * 1.1; ball.vy *= 0.9;
+                ball.hasHitSomething = true; ball.hasHitBoard = true;
+                showMsg("CLANK!", '#cfd8dc');
+            }
+        }
+        checkRimHit({x: HOOP.x, y: HOOP.y});
+        checkRimHit({x: HOOP.x + HOOP.w, y: HOOP.y});
+        if (!ball.scored && ball.vy > 0) {
+            if (ball.x > HOOP.x + ball.r/2 && ball.x < HOOP.x + HOOP.w - ball.r/2) {
+                if (ball.y >= HOOP.y && ball.y <= HOOP.y + 20) handleScore();
+            }
+        }
+    }
+    function checkRimHit(rim) {
+        const dx = ball.x - rim.x, dy = ball.y - rim.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < ball.r + HOOP.rimR) {
+            ball.hasHitSomething = true; ball.hasHitRim = true;
+            const nx = dx/dist, ny = dy/dist;
+            const dot = ball.vx*nx + ball.vy*ny;
+            ball.vx = (ball.vx - 2*dot*nx) * RIM_BOUNCE;
+            ball.vy = (ball.vy - 2*dot*ny) * RIM_BOUNCE;
+            const overlap = (ball.r + HOOP.rimR) - dist;
+            ball.x += nx * overlap; ball.y += ny * overlap;
+        }
+    }
+    function checkItemCollision() {
+        if (!floatingItem.active) return;
+        const dx = ball.x - floatingItem.x;
+        const dy = ball.y - (floatingItem.y + floatingItem.offset);
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < ball.r + 25) {
+            floatingItem.active = false;
+            let t = floatingItem.type;
+            let txt = "";
+            if (t === 'ball') { 
+                currP.balls++; updateTopBarUI(); 
+                let boxId = (turnPlayer === 1) ? 'ballDisplay' : 'ballDisplayP2';
+                document.getElementById(boxId).classList.add('pop');
+                setTimeout(()=>document.getElementById(boxId).classList.remove('pop'), 200);
+                txt="+1 BALL"; 
+            } else if (t === 'rainbow') { currP.hasRainbow = true; txt="RAINBOW NEXT!"; }
+            spawnFloatScore(0, floatingItem.x, floatingItem.y, txt);
+            spawnParticles(floatingItem.x, floatingItem.y, 15, ['#00e676', '#fff']);
+        }
+    }
+    function handleScore() {
+        ball.scored = true; currP.streak++;
+        let pts = ball.isThree ? 3 : 2;
+        let mult = 1;
+        if (currP.isFireball) mult *= 2; if (currP.usingRainbow) mult *= 3; if (currP.pu_x2.active) mult *= 2;
+        pts *= mult;
+        let swishBonus = 0;
+        const isCentered = Math.abs(ball.x - (HOOP.x + HOOP.w/2)) < 10;
+        if (isCentered && !ball.hasHitBoard && !ball.hasHitRim) swishBonus = 1;
+        pts += swishBonus; currP.score += pts;
+        let msg = swishBonus ? "SWISH! +1" : "GOOD!";
+        let col = swishBonus ? "#00e676" : "#fff";
+        if (ball.isThree) { msg = swishBonus ? "3PT SWISH!" : "3 POINTER!"; col = "#f1c40f"; }
+        if (currP.isFireball) { msg = "FIRE!"; col = "#e74c3c"; }
+        if (currP.usingRainbow) { msg = "RAINBOW!!!"; col = `hsl(${hue}, 70%, 60%)`; }
+        showMsg(msg, col);
+        if (currP.isFireball || currP.usingRainbow) {
+            gameContainer.classList.add('shake'); setTimeout(()=>gameContainer.classList.remove('shake'), 500);
+        }
+        spawnFloatScore(pts, HOOP.x, HOOP.y);
+        spawnParticles(HOOP.x+HOOP.w/2, HOOP.y, 30, currP.usingRainbow ? [`hsl(${hue}, 70%, 60%)`] : ['#fff', '#ffd700']);
+        updateTopBarUI();
+    }
+    function handleAirball() {
+        currP.streak = 0; 
+        
+        // Mercy Rule: If ball was close to hoop (within ~80px), don't deduct points
+        if (ball.minDistToHoop < 80) {
+             showMsg("CLOSE!", '#bdc3c7'); 
+        } else {
+             currP.score = Math.max(0, currP.score - 1); 
+             showMsg("AIRBALL -1", '#e74c3c'); 
+             spawnFloatScore(-1, ball.x, ball.y - 20);
+        }
+        updateTopBarUI();
+    }
+    function showMsg(txt, color) {
+        msgEl.innerText = txt; msgEl.style.color = color;
+        msgEl.className = ''; void msgEl.offsetWidth; msgEl.classList.add('pop');
+        setTimeout(() => msgEl.classList.remove('pop'), 800);
+    }
+    function showTurnMessage(txt, color) {
+        turnMsg.innerText = txt; turnMsg.style.color = color;
+        turnMsg.classList.add('show');
+        setTimeout(() => turnMsg.classList.remove('show'), 1500);
+    }
+    function spawnParticles(x, y, n, cols) {
+        for(let i=0; i<n; i++) particles.push({x:x, y:y, vx:(Math.random()-0.5)*4, vy:(Math.random()-0.5)*4, life:1, col:cols[Math.floor(Math.random()*cols.length)]});
+    }
+    function updateParticles() {
+        for(let i=particles.length-1; i>=0; i--) {
+            particles[i].x+=particles[i].vx; particles[i].y+=particles[i].vy; particles[i].life-=0.05;
+            if(particles[i].life<=0) particles.splice(i,1);
+        }
+    }
+    function drawParticles() { particles.forEach(p=>{let sz=p.life>0.5?4:2; pixelRect(p.x, p.y, sz, sz, p.col);}); }
+    function spawnFloatScore(pts, x, y, textOverride) { floatScores.push({val:pts, text:textOverride, x:x, y:y, life:1.0}); }
+    function updateFloatScores() {
+        for(let i=floatScores.length-1; i>=0; i--) {
+            floatScores[i].y-=1; floatScores[i].life-=0.02;
+            if(floatScores[i].life<=0) floatScores.splice(i,1);
+        }
+    }
+    function drawFloatScores() {
+        floatScores.forEach(f=>{
+            ctx.globalAlpha=f.life; ctx.font='16px "Press Start 2P"';
+            if (f.text) { ctx.fillStyle = '#00e676'; ctx.fillText(f.text, f.x, f.y); } 
+            else {
+                ctx.fillStyle = f.val > 0 ? '#f1c40f' : '#7f8c8d';
+                ctx.fillText(f.val > 0 ? "+" + f.val : f.val, f.x, f.y); 
+            }
+            ctx.globalAlpha=1.0;
+        });
+    }
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawEnvironment(); drawParticles(); drawHoopBack(); drawBall(); drawFloatingItem(); drawHoopFront(); drawFloatScores();
+        if (gameState === STATE.AIM_DIST || gameState === STATE.AIM_HIGH) drawUI();
+    }
+    function pixelRect(x, y, w, h, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.floor(x/PIXEL_SIZE)*PIXEL_SIZE, Math.floor(y/PIXEL_SIZE)*PIXEL_SIZE, Math.ceil(w/PIXEL_SIZE)*PIXEL_SIZE, Math.ceil(h/PIXEL_SIZE)*PIXEL_SIZE);
+    }
+    function pixelCircle(cx, cy, r, color) {
+        ctx.fillStyle = color; let step = PIXEL_SIZE;
+        for (let y=-r; y<=r; y+=step) for (let x=-r; x<=r; x+=step) if (x*x+y*y<=r*r) pixelRect(cx+x, cy+y, step, step, color);
+    }
+    function drawEnvironment() {
+        ctx.fillStyle = '#5d4037'; ctx.fillRect(0, 0, canvas.width, GROUND_Y);
+        let bh = 40, bw = 80;
+        for (let y=0; y<GROUND_Y; y+=bh) {
+            let off = (y/bh%2)*(bw/2);
+            for (let x=-bw; x<canvas.width; x+=bw) {
+                pixelRect(x+off, y, 4, bh, '#3e2723'); pixelRect(0, y, canvas.width, 4, '#3e2723');
+            }
+        }
+        pixelRect(0, GROUND_Y, canvas.width, canvas.height-GROUND_Y, '#7f8c8d');
+        ctx.fillStyle = '#bdc3c7';
+        for(let y=GROUND_Y; y<canvas.height; y+=12) pixelRect(THREE_POINT_X, y, 4, 6, '#bdc3c7');
+        ctx.font = '12px "Press Start 2P"'; ctx.fillStyle = '#bdc3c7';
+        ctx.fillText("3PT LINE", THREE_POINT_X-120, GROUND_Y+30); 
+    }
+    function drawBall() {
+        let color = (turnPlayer === 1) ? p1Color : '#2980b9';
+        if (currP.usingRainbow) color = `hsl(${hue}, 70%, 60%)`;
+        else if (currP.isFireball) color = Math.random() > 0.5 ? '#ff5722' : '#f1c40f';
+        
+        let off = (gameState===STATE.AIM_DIST || gameState===STATE.AIM_HIGH) ? ball.readyOff : 0;
+        let bx = ball.x;
+        let by = ball.y + off;
+        let r = ball.r;
+
+        pixelCircle(bx, by, r, color);
+
+        // Shine effect for Gold Ball
+        if (p1Color === '#ffd700' && turnPlayer === 1 && !currP.usingRainbow && !currP.isFireball) {
+             ctx.save();
+             ctx.beginPath();
+             ctx.arc(bx, by, r, 0, Math.PI * 2);
+             ctx.clip();
+             
+             let shinePos = (Date.now() / 10) % (r * 4) - r * 2;
+             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+             ctx.beginPath();
+             ctx.moveTo(bx + shinePos, by - r);
+             ctx.lineTo(bx + shinePos + 10, by - r);
+             ctx.lineTo(bx + shinePos - 10, by + r);
+             ctx.lineTo(bx + shinePos - 20, by + r);
+             ctx.fill();
+             ctx.restore();
+        }
+
+        ctx.fillStyle = 'rgba(0,0,0,0.2)';
+        pixelRect(bx + r/2, by - r/2, r/2, r, 'rgba(0,0,0,0.2)');
+        pixelRect(bx - r/2, by + r/2, r, r/4, 'rgba(0,0,0,0.2)');
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        pixelRect(bx - r/2, by - r/2, 8, 8, 'rgba(255, 255, 255, 0.4)');
+
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        pixelRect(bx - r + 4, by, 2 * r - 8, 4, 'rgba(0,0,0,0.4)');
+        pixelRect(bx, by - r + 4, 4, 2 * r - 8, 'rgba(0,0,0,0.4)');
+    }
+    function drawFloatingItem() {
+        if (!floatingItem.active) return;
+        const s = floatingItem.scale || 1;
+        ctx.save(); ctx.translate(floatingItem.x, floatingItem.y + floatingItem.offset);
+        if (floatingItem.type === 'rainbow') {
+            let orbHue = (hue * 2) % 360;
+            pixelCircle(0, 0, 16 * s, `hsl(${orbHue}, 70%, 60%)`);
+            pixelCircle(0, 0, 12 * s, `hsl(${orbHue + 90}, 70%, 60%)`);
+            pixelCircle(0, 0, 6 * s, `hsl(${orbHue + 180}, 70%, 60%)`);
+            ctx.fillStyle = '#fff';
+            if (Math.floor(hue / 10) % 2 === 0) {
+                pixelRect(-10, -10, 4, 4, '#fff');
+                pixelRect(10, 10, 4, 4, '#fff');
+            } else {
+                pixelRect(10, -10, 4, 4, '#fff');
+                pixelRect(-10, 10, 4, 4, '#fff');
+            }
+        } else {
+            pixelCircle(0, 0, 14 * s, '#e67e22');
+            pixelRect(-10, -2, 20, 4, '#333');
+            ctx.fillStyle = '#fff'; ctx.font = '10px "Press Start 2P"';
+            ctx.textAlign = 'center'; ctx.fillText("+1", 0, 4);
+        }
+        ctx.restore();
+    }
+    function drawHoopBack() {
+        pixelRect(HOOP.backX+10, HOOP.y-40, 20, GROUND_Y-HOOP.y+40, '#333');
+        pixelRect(HOOP.backX, HOOP.y-80, 12, 120, '#ecf0f1');
+        pixelRect(HOOP.backX+4, HOOP.y-35, 8, 40, '#c0392b');
+        ctx.fillStyle = '#90a4ae';
+        for(let y=HOOP.y; y<HOOP.y+50; y+=8) {
+            pixelRect(HOOP.x+10+(y-HOOP.y)/2, y, 4, 4, '#90a4ae');
+            pixelRect(HOOP.x+HOOP.w-10-(y-HOOP.y)/2, y, 4, 4, '#90a4ae');
+        }
+    }
+    function drawHoopFront() {
+        pixelRect(HOOP.x, HOOP.y, HOOP.w, 8, '#d35400');
+        if (currP.pu_big.active) {
+            ctx.fillStyle = '#00e676'; ctx.font = '10px "Press Start 2P"';
+            ctx.fillText("BIG", HOOP.x+20, HOOP.y+20);
+        }
+    }
+    function drawUI() {
+        if (gameState === STATE.AIM_HIGH) {
+            let vx = (distBar.val/100)*24, vy = -8 - (highBar.val/100)*18;
+            let sx = ball.x, sy = ball.y; ctx.fillStyle = '#fff';
+            for(let i=0; i<12; i++) {
+                vy += GRAVITY; sx += vx; sy += vy;
+                if (i%2===0) pixelRect(sx, sy, 4, 4, '#fff');
+            }
+        }
+        const x = ball.x - 60, y = ball.y - 80;
+        pixelRect(x, y, 120, 16, '#000');
+        let barColor = (turnPlayer===1) ? '#e67e22' : '#3498db';
+        let dw = (distBar.val/100)*120;
+        pixelRect(x, y, dw, 16, barColor);
+        if (gameState === STATE.AIM_HIGH) {
+            const hx = x+130, hy = y-80;
+            pixelRect(hx, hy, 16, 100, '#000');
+            let dh = (highBar.val/100)*100;
+            pixelRect(hx, hy+100-dh, 16, dh, '#e91e63');
+        }
+    }
+</script>
+</body>
+</html>
