@@ -573,27 +573,50 @@
     import { getFirestore, collection, addDoc, getDocs, setDoc, doc, getDoc, serverTimestamp, query, where, deleteDoc, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // --- Firebase Init ---
-    const firebaseConfig = JSON.parse(__firebase_config);
+    let firebaseConfig;
+    let appId;
+
+    // 1. 檢查是否在協作環境中 (使用隱藏變數)
+    if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+        firebaseConfig = JSON.parse(__firebase_config);
+        appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.projectId;
+        console.log("Using dynamic environment configuration.");
+    } else {
+        // 2. GitHub 或其他獨立部署環境 - **用戶必須替換此處！**
+        const firebaseConfig = {
+            apiKey: "AIzaSyDizpxgLQfGMVFRfakfs1MwuhF4k4ZRLP4",
+            authDomain: "streetball-ultimate-rank.firebaseapp.com",
+            projectId: "streetball-ultimate-rank",
+            storageBucket: "streetball-ultimate-rank.firebasestorage.app",
+            messagingSenderId: "1081286196484",
+            appId: "1:1081286196484:web:0677e0eab585c583faa451",
+            measurementId: "G-ZP9H5GTLNV"
+        };
+        // 在 GitHub 環境中，使用 projectId 作為 appId 的安全備用值
+        appId = firebaseConfig.projectId; 
+    }
+    
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     
     let currentUser = null;
     let currentPlayerName = "";
 
     async function initAuth() {
         try {
+            // 在 GitHub 等環境，隱藏的 token 不會存在，使用標準匿名登入即可
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token);
             } else {
-                await signInAnonymously(auth);
+                await signInAnonymously(auth); 
             }
             currentUser = auth.currentUser;
             fetchLeaderboardDisplay(); 
             loadProfileFromCloud(); 
         } catch (e) {
-            console.error("Auth failed", e);
+            console.error("Auth failed. Check your Firebase config and ensure Anonymous Sign-in is enabled.", e);
+            // 由於 Firebase 連線失敗，排行榜將不會載入
         }
     }
     initAuth();
@@ -602,6 +625,7 @@
     async function logScoreHistory(name, score) {
         if (!currentUser || score <= 0) return;
         try {
+            // 安全規則路徑: /artifacts/{appId}/public/data/score_history
             const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'score_history');
             await addDoc(historyRef, {
                 name: name,
@@ -672,6 +696,7 @@
         startLbContent.innerHTML = '<div class="slb-loading">LOADING RANKS...</div>';
         
         try {
+            // 安全規則路徑: /artifacts/{appId}/public/data/leaderboard
             const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
             const snapshot = await getDocs(colRef);
             let scores = processScores(snapshot);
@@ -815,6 +840,7 @@
     async function loadProfileFromCloud() {
         if (!currentUser) return;
         try {
+            // 安全規則路徑: /artifacts/{appId}/users/{currentUser.uid}/settings/profile
             const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'settings', 'profile');
             const docSnap = await getDoc(docRef);
             
@@ -1630,5 +1656,4 @@
     }
 </script>
 </body>
-
 </html>
