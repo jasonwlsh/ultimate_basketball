@@ -1,0 +1,77 @@
+
+input[type=range] { 
+    flex: 1; 
+    margin: 0 15px; 
+    cursor: pointer; 
+    accent-color: #f1c40f;
+}
+
+.switch { 
+    position: relative; 
+    display: inline-block; 
+    width: 60px; 
+    height: 28px; 
+    flex-shrink: 0;
+}
+
+.switch input { 
+    opacity: 0; 
+    width: 0; 
+    height: 0; 
+}
+
+.slider { 
+    position: absolute; 
+    cursor: pointer; 
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0; 
+    background-color: #444; 
+    transition: .2s; 
+    border: 2px solid #fff; 
+}
+
+.slider:before { 
+    position: absolute; 
+    content: ""; 
+    height: 16px; 
+    width: 16px; 
+    left: 4px; 
+    bottom: 4px; 
+    background-color: white; 
+    transition: .2s; 
+}
+
+input:checked + .slider { 
+    background-color: #f1c40f; 
+}
+
+input:checked + .slider:before { 
+    transform: translateX(32px); 
+}
+
+.name-input-main { 
+    padding: 12px; 
+    font-family: 'Press Start 2P'; 
+    background: #111; 
+    border: 3px solid #f1c40f; 
+    color: #fff; 
+    text-align: center; 
+    font-size: 1rem; 
+    width: 100%; 
+    text-transform: uppercase; 
+    box-shadow: 0 4px 0 rgba(0,0,0,0.5); 
+    box-sizing: border-box; 
+}
+
+.name-input-main::placeholder { 
+    color: #555; 
+}
+
+.input-label { 
+    font-size: 0.6rem; 
+    color: #bdc3c7; 
+    letter-spacing: 1px; 
+    white-space: nowrap;
+}
