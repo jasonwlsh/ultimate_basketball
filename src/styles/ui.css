@@ -202,3 +202,14 @@
     opacity: 1; 
     transform: translate(-50%, -50%) scale(1.1); 
 }
+
+.powerup-bar {
+    position: absolute;
+    bottom: 20px;
+    left: 85%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    z-index: 20;
+    pointer-events: auto;
+}
