@@ -382,7 +382,7 @@ function getGreenZoneStart(){
     // 800px -> 0.90
     let dist = Math.abs(HOOP.x - player.x);
     let normalized = Math.min(dist, 700) / 700; // 0 to 1
-    return 0.7 - (normalized * 0.15);
+    return 0.7 - (normalized * 0.22);
 }
 
 function calculateLaunchVelocity(ov, ballIdx){
@@ -693,3 +693,4 @@ function drawHoopFront(){pixelRect(ctx,HOOP.x,HOOP.y,HOOP.w,8,'#d35400');if(curr
 </script>
 </body>
 </html>
+
