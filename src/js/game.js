@@ -161,47 +161,47 @@ function launchBall() {
 
     let b = balls[heldBallIndex];
     let greenStart = getGreenZoneStart();
+    const isGoldShot = Math.abs(aimOscillator - GAME_CONFIG.METER.GOLD_ZONE_START) < GAME_CONFIG.METER.GOLD_ZONE_TOLERANCE;
+    const isGreenShot = Math.abs(aimOscillator - greenStart) < GAME_CONFIG.METER.GREEN_TOLERANCE;
 
-    if (Math.abs(aimOscillator - greenStart) < GAME_CONFIG.METER.GREEN_TOLERANCE) {
-        // --- GREEN SHOT = DUNK ---
-        gameEvents.push({ type: 'SHOW_MSG', text: "DUNK TIME!", color: "#e67e22" });
-        b.isGreen = true;
+    if (isGoldShot) {
+        // --- GOLD SHOT = RISKY DUNK ---
+        gameEvents.push({ type: 'SHOW_MSG', text: "賭一把!", color: "#ffd700" });
+        b.isGreen = false;
         gameState = STATE.DUNKING;
-        
-        // Linear vx and vy calculation for a direct flight
-        const t_flight = 25; // Target time to reach the dunk point (in frames)
+
+        const t_flight = 25;
         const targetX = HOOP.x + HOOP.w / 2;
-        const targetY = HOOP.y - 50; // Target height above the hoop
+        const targetY = HOOP.y - 50;
         
         player.vx = (targetX - player.x) / t_flight;
-        player.vy = (targetY - player.y) / t_flight; // Direct linear velocity
-        
+        player.vy = (targetY - player.y) / t_flight;
         player.onGround = false;
-        
-        // Ball remains held, no physics applied to it directly yet
-        
-    } else {
-        // --- NORMAL SHOT ---
-        gameState = STATE.FLYING;
 
+    } else {
+        // --- NORMAL OR GREEN SHOT ---
+        if (isGreenShot) {
+            gameEvents.push({ type: 'SHOW_MSG', text: "NICE!", color: "#2ecc71" });
+            b.isGreen = true;
+        } else {
+            b.isGreen = false;
+        }
+        
+        gameState = STATE.FLYING;
         if (!isInfinite) currP.balls--;
         currP.shotsCount++;
 
         if (currP.pu_x2.active) currP.pu_x2.count--;
         if (currP.pu_big.active) currP.pu_big.count--;
 
-        // Use the normal calculation for a non-green shot
         let vel = calculateLaunchVelocity(aimOscillator, heldBallIndex);
         b.vx = vel.vx; 
         b.vy = vel.vy; 
-        b.isGreen = false; 
         b.pickupTimer = 0.5;
         
-        // Release the ball
         b.held = false;
         heldBallIndex = -1;
         
-        // Player does a small jump back
         player.vy = -12; 
         player.vx = -3; 
         player.onGround = false;

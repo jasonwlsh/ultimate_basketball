@@ -20,7 +20,9 @@ export const GAME_CONFIG = {
     METER: {
         SPEED: 0.030, // 力度計擺動速度
         GREEN_WIDTH: 0.08, // 完美出手區域寬度
-        GREEN_TOLERANCE: 0.08 // 完美出手容錯率
+        GREEN_TOLERANCE: 0.08, // 完美出手容錯率
+        GOLD_ZONE_START: 1.0, // 黃金灌籃區起點
+        GOLD_ZONE_TOLERANCE: 0.035 // 黃金灌籃區容錯率
     },
     // 遊戲模式相關設定
     GAME: {
