@@ -53,18 +53,17 @@ export function createRenderer(canvas) {
             const indicatorX = barX + (barW - indicatorW) * aimOscillator;
             pixelRect(ctx, indicatorX, barY, indicatorW, barH, '#fff');
 
-            // 3. Draw the green zone as two vertical lines on top
+            // 3. Draw the green zone as a solid bar
             const greenStart = getGreenZoneStart();
             const greenW = GAME_CONFIG.METER.GREEN_WIDTH;
-            const greenLineX1 = barX + barW * greenStart;
-            const greenLineX2 = barX + barW * (greenStart + greenW);
-                    pixelRect(ctx, greenLineX1, barY, 4, barH, '#00e676'); // Use pixelRect for blocky lines
-                    pixelRect(ctx, greenLineX2, barY, 4, barH, '#00e676');
-            
-                    // Draw a gold center for the perfect release
-                    const goldZoneW = 8; // Width of the gold center
-                    const goldZoneX = barX + barW * (greenStart + greenW / 2) - goldZoneW / 2;
-                    pixelRect(ctx, goldZoneX, barY, goldZoneW, barH, '#ffd700'); // Gold color
+            const greenX = barX + barW * greenStart;
+            const greenW_px = barW * greenW;
+            pixelRect(ctx, greenX, barY, greenW_px, barH, '#00e676');
+
+            // Draw a gold center for the perfect release
+            const goldZoneW = 8; // Width of the gold center
+            const goldZoneX = greenX + (greenW_px / 2) - (goldZoneW / 2);
+            pixelRect(ctx, goldZoneX, barY, goldZoneW, barH, '#ffd700'); // Gold color
             // 4. Draw a pixelated border
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = GAME_CONFIG.PIXEL_SIZE;
