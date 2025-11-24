@@ -63,8 +63,15 @@ export function createRenderer(canvas) {
             // Draw a gold center for the perfect release
             const goldZoneW = 8; // Width of the gold center
             const goldZoneX = greenX + (greenW_px / 2) - (goldZoneW / 2);
-            pixelRect(ctx, goldZoneX, barY, goldZoneW, barH, '#ffd700'); // Gold color
-            // 4. Draw a pixelated border
+            pixelRect(ctx, goldZoneX, barY, goldZoneW, barH, '#00e676'); // Green color
+
+            // 4. Draw the gold zone (risky dunk zone) at the far right
+            const riskyDunkZoneStart = GAME_CONFIG.METER.GOLD_ZONE_START - GAME_CONFIG.METER.GOLD_ZONE_TOLERANCE;
+            const riskyDunkZoneX = barX + barW * riskyDunkZoneStart;
+            const riskyDunkZoneW = barW * GAME_CONFIG.METER.GOLD_ZONE_TOLERANCE;
+            pixelRect(ctx, riskyDunkZoneX, barY, riskyDunkZoneW, barH, '#00e676'); // Green color
+
+            // 5. Draw a pixelated border
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = GAME_CONFIG.PIXEL_SIZE;
             ctx.strokeRect(
