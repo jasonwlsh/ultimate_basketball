@@ -134,7 +134,7 @@
 
 .pos-lock-btn { 
     position: absolute; 
-    bottom: 100px; 
+    bottom: 30px; 
     left: 50%; 
     transform: translateX(-50%); 
     background: #00e676; 

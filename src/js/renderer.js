@@ -43,19 +43,37 @@ export function createRenderer(canvas) {
     function drawFloatingItem(floatingItem, hue){if(!floatingItem.active)return;let y=floatingItem.y+floatingItem.offset,sz=20*floatingItem.scale,c=floatingItem.type==='rainbow'?`hsl(${hue},70%,60%)`:'#00e676';pixelCircle(ctx,floatingItem.x,y,sz,c);ctx.fillStyle='#fff';ctx.font='10px "Press Start 2P"';ctx.textAlign='center';ctx.fillText("?",floatingItem.x,y+4);}
     function drawUI(player, gameState, aimOscillator, getGreenZoneStart){
         if(gameState===1 /* AIMING */){
-            let barW = 120; let barH = 16; let barX = player.x - barW/2; let barY = player.y - 70; 
-            ctx.fillStyle = '#222'; ctx.fillRect(barX, barY, barW, barH);
+            let barW = 120; let barH = 16; let barX = player.x - barW/2; let barY = player.y - 80; // Moved it up a bit
+
+            // 1. Draw the bar background with a pixelated feel
+            pixelRect(ctx, barX, barY, barW, barH, '#333');
+
+            // 2. Draw the moving oscillator indicator
+            const indicatorW = 8;
+            const indicatorX = barX + (barW - indicatorW) * aimOscillator;
+            pixelRect(ctx, indicatorX, barY, indicatorW, barH, '#fff');
+
+            // 3. Draw the green zone as two vertical lines on top
+            const greenStart = getGreenZoneStart();
+            const greenW = GAME_CONFIG.METER.GREEN_WIDTH;
+            const greenLineX1 = barX + barW * greenStart;
+            const greenLineX2 = barX + barW * (greenStart + greenW);
+                    pixelRect(ctx, greenLineX1, barY, 4, barH, '#00e676'); // Use pixelRect for blocky lines
+                    pixelRect(ctx, greenLineX2, barY, 4, barH, '#00e676');
             
-            let greenStart = getGreenZoneStart();
-            let greenW = GAME_CONFIG.METER.GREEN_WIDTH;
-            
-            ctx.fillStyle = '#00e676'; ctx.fillRect(barX + (barW * greenStart), barY, barW * greenW, barH);
-            ctx.fillStyle = '#000'; ctx.fillRect(barX + (barW * greenStart), barY, 1, barH); ctx.fillRect(barX + (barW * (greenStart + greenW)), barY, 1, barH);
-            
-            let fillPct = aimOscillator; let fillW = barW * fillPct;
-            if(Math.abs(fillPct - (greenStart + greenW/2)) < 0.15) ctx.fillStyle = '#f1c40f'; else ctx.fillStyle = '#fff';
-            ctx.fillRect(barX, barY, fillW, barH);
-            ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(barX, barY, barW, barH);
+                    // Draw a gold center for the perfect release
+                    const goldZoneW = 8; // Width of the gold center
+                    const goldZoneX = barX + barW * (greenStart + greenW / 2) - goldZoneW / 2;
+                    pixelRect(ctx, goldZoneX, barY, goldZoneW, barH, '#ffd700'); // Gold color
+            // 4. Draw a pixelated border
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = GAME_CONFIG.PIXEL_SIZE;
+            ctx.strokeRect(
+                Math.floor(barX/GAME_CONFIG.PIXEL_SIZE)*GAME_CONFIG.PIXEL_SIZE,
+                Math.floor(barY/GAME_CONFIG.PIXEL_SIZE)*GAME_CONFIG.PIXEL_SIZE,
+                Math.ceil(barW/GAME_CONFIG.PIXEL_SIZE)*GAME_CONFIG.PIXEL_SIZE,
+                Math.ceil(barH/GAME_CONFIG.PIXEL_SIZE)*GAME_CONFIG.PIXEL_SIZE
+            );
         }
     }
     function drawHoopBack(HOOP){pixelRect(ctx,HOOP.backX+10,HOOP.y-40,20,GAME_CONFIG.PHYSICS.GROUND_Y-HOOP.y+40,'#333');pixelRect(ctx,HOOP.backX,HOOP.y-80,12,120,'#ecf0f1');pixelRect(ctx,HOOP.backX+4,HOOP.y-35,8,40,'#c0392b');ctx.fillStyle='#90a4ae';for(let y=HOOP.y;y<HOOP.y+50;y+=8){pixelRect(ctx,HOOP.x+10+(y-HOOP.y)/2,y,4,4,'#90a4ae');pixelRect(ctx,HOOP.x+HOOP.w-10-(y-HOOP.y)/2,y,4,4,'#90a4ae');}}

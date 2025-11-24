@@ -65,7 +65,7 @@ export async function fetchScoreHistory() {
         return history;
     } catch (e) {
         console.error("Error fetching history:", e);
-        return null; // Indicates error
+        return []; // graceful fallback for local preview
     }
 }
 
@@ -89,20 +89,20 @@ function removeScoreDuplicates(a) {
 
 
 export async function fetchLeaderboard() {
-     if (!currentUser) return null;
+     if (!currentUser) return [];
     try {
         const s = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard'));
         let sc = processScores(s);
         return removeScoreDuplicates(sc).slice(0, 5);
     } catch (e) {
         console.error("Error fetching leaderboard:", e);
-        return null;
+        return [];
     }
 }
 
 
 export async function uploadScore(name, score, isGoldUnlocked) {
-    if (!currentUser) return null;
+    if (!currentUser) return { error: true };
     
     try {
         if (score > 0) await logScoreHistory(name, score);

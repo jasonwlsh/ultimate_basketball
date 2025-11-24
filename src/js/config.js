@@ -19,8 +19,8 @@ export const GAME_CONFIG = {
     // 投籃力度計相關設定
     METER: {
         SPEED: 0.030, // 力度計擺動速度
-        GREEN_WIDTH: 0.15, // 完美出手區域寬度
-        GREEN_TOLERANCE: 0.05 // 完美出手容錯率
+        GREEN_WIDTH: 0.08, // 完美出手區域寬度
+        GREEN_TOLERANCE: 0.08 // 完美出手容錯率
     },
     // 遊戲模式相關設定
     GAME: {
@@ -34,7 +34,7 @@ export const GAME_CONFIG = {
     // 角色設定
     CHARACTERS: {
         curry: { name: 'CURRY', skin: '#f1c27d', jersey: '#fff', speed: 7, zone: '3PT' },
-        lbj: { name: 'LBJ', skin: '#5d4037', jersey: '#f1c40f', speed: 4.5, zone: 'MID' }
+        lbj: { name: 'LBJ(GOAT)', skin: '#5d4037', jersey: '#f1c40f', speed: 4.5, zone: 'MID' }
     },
     PIXEL_SIZE: 4 // 像素大小 (用於像素化繪圖)
 };

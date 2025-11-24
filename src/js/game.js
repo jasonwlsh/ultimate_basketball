@@ -10,7 +10,7 @@ import { GAME_CONFIG } from './config.js';
 // --- 遊戲狀態管理 ---
 export const STATE = {
     POS: 0, AIMING: 1, FLYING: 2, RESET: 3, OVER: 4, 
-    MENU: 5, PICKUP: 6, CHAR_SELECT: 7
+    MENU: 5, PICKUP: 6, CHAR_SELECT: 7, DUNKING: 8
 };
 export let gameState = STATE.MENU;
 export let numPlayers = 1, turnPlayer = 1, isInfinite = false, infiniteTimer = 60;
@@ -32,7 +32,7 @@ export let currP = p1;
 
 // --- 遊戲物件 ---
 export let player = { x: 100, y: GAME_CONFIG.PHYSICS.GROUND_Y, vx: 0, vy: 0, onGround: true };
-export let aimOscillator = 0, aimDirection = 1;
+export let aimOscillator = 0, aimDirection = 1, dunkHangTimer = 0;
 export let HOOP = {
     x: GAME_CONFIG.COURT.HOOP_X, y: GAME_CONFIG.COURT.HOOP_Y, w: GAME_CONFIG.COURT.HOOP_W,
     rimR: 4, backX: 880, backW: 10, backH: 110
@@ -158,37 +158,55 @@ export function handleGameInput() {
 
 function launchBall() {
     if (heldBallIndex === -1) return;
-    gameState = STATE.FLYING;
-
-    if (!isInfinite) currP.balls--;
-    currP.shotsCount++;
-
-    if (currP.pu_x2.active) currP.pu_x2.count--;
-    if (currP.pu_big.active) currP.pu_big.count--;
 
     let b = balls[heldBallIndex];
-    let vel = calculateLaunchVelocity(aimOscillator, heldBallIndex);
-    b.vx = vel.vx; b.vy = vel.vy; b.isGreen = false; b.pickupTimer = 0.5;
-
     let greenStart = getGreenZoneStart();
+
     if (Math.abs(aimOscillator - greenStart) < GAME_CONFIG.METER.GREEN_TOLERANCE) {
-        gameEvents.push({ type: 'SHOW_MSG', text: "PERFECT RELEASE", color: "#00e676" });
+        // --- GREEN SHOT = DUNK ---
+        gameEvents.push({ type: 'SHOW_MSG', text: "DUNK TIME!", color: "#e67e22" });
         b.isGreen = true;
-        let dist = HOOP.x + HOOP.w / 2 - b.x;
-        b.vx = dist * 0.0285;
-        b.vy = -15 - (0.95 * 12);
-    }
+        gameState = STATE.DUNKING;
+        
+        // Linear vx and vy calculation for a direct flight
+        const t_flight = 25; // Target time to reach the dunk point (in frames)
+        const targetX = HOOP.x + HOOP.w / 2;
+        const targetY = HOOP.y - 50; // Target height above the hoop
+        
+        player.vx = (targetX - player.x) / t_flight;
+        player.vy = (targetY - player.y) / t_flight; // Direct linear velocity
+        
+        player.onGround = false;
+        
+        // Ball remains held, no physics applied to it directly yet
+        
+    } else {
+        // --- NORMAL SHOT ---
+        gameState = STATE.FLYING;
 
-    b.held = false;
-    heldBallIndex = -1;
+        if (!isInfinite) currP.balls--;
+        currP.shotsCount++;
 
-    b.isZoneShot = false;
-    if (isInfinite && neonZone.active && player.x > neonZone.x - 20 && player.x < neonZone.x + neonZone.w + 20) {
-        b.isZoneShot = true;
+        if (currP.pu_x2.active) currP.pu_x2.count--;
+        if (currP.pu_big.active) currP.pu_big.count--;
+
+        // Use the normal calculation for a non-green shot
+        let vel = calculateLaunchVelocity(aimOscillator, heldBallIndex);
+        b.vx = vel.vx; 
+        b.vy = vel.vy; 
+        b.isGreen = false; 
+        b.pickupTimer = 0.5;
+        
+        // Release the ball
+        b.held = false;
+        heldBallIndex = -1;
+        
+        // Player does a small jump back
+        player.vy = -12; 
+        player.vx = -3; 
+        player.onGround = false;
+        gameEvents.push({ type: 'BALL_LAUNCHED' });
     }
-    
-    player.vy = -12; player.vx = -3; player.onGround = false;
-    gameEvents.push({ type: 'BALL_LAUNCHED' });
 }
 
 export function usePowerup(type) {
@@ -245,7 +263,7 @@ function spawnFloatingItem(type) {
 
 // --- 碰撞與計分 ---
 function checkCollisions(b) {
-    if (b.x + b.r > HOOP.backX && b.x - b.r < HOOP.backX + HOOP.backW && b.y > HOOP.y - 80 && b.y < HOOP.y + 50 && b.vx > 0) {
+    if (!b.isGreen && b.x + b.r > HOOP.backX && b.x - b.r < HOOP.backX + HOOP.backW && b.y > HOOP.y - 80 && b.y < HOOP.y + 50 && b.vx > 0) {
         b.x = HOOP.backX - b.r;
         b.vx *= -GAME_CONFIG.PHYSICS.BALL_BOUNCE * 1.1;
         b.vy *= 0.9;
@@ -253,8 +271,13 @@ function checkCollisions(b) {
         b.hasHitBoard = true;
         gameEvents.push({ type: 'SHOW_MSG', text: "CLANK!", color: "#cfd8dc" });
     }
-    if (!b.isGreen) checkRimHit(b, { x: HOOP.x, y: HOOP.y });
-    checkRimHit(b, { x: HOOP.x + HOOP.w, y: HOOP.y });
+    if (!b.isGreen) {
+        checkRimHit(b, { x: HOOP.x, y: HOOP.y });
+        checkRimHit(b, { x: HOOP.x + HOOP.w, y: HOOP.y });
+    }
+    if (b.isGreen && !b.scored && Math.abs(b.x - (HOOP.x + HOOP.w / 2)) < 30 && b.y >= HOOP.y + 5 && b.y <= HOOP.y + 80) {
+        handleScore(b);
+    }
     if (!b.scored && b.vy > 0 && b.x > HOOP.x + b.r / 2 && b.x < HOOP.x + HOOP.w - b.r / 2 && b.y >= HOOP.y && b.y <= HOOP.y + 20) {
         handleScore(b);
     }
@@ -320,6 +343,38 @@ export function updateGameState() {
     hue = (hue + 1) % 360;
     if (gameState === STATE.MENU || gameState === STATE.OVER || gameState === STATE.CHAR_SELECT) return;
 
+    if (gameState === STATE.DUNKING) {
+        if (heldBallIndex !== -1) {
+            setHeldBallPosition();
+            let b = balls[heldBallIndex];
+
+            if (!b.scored) {
+                // --- Flying Phase (Linear) ---
+                const targetX = HOOP.x + HOOP.w / 2;
+                
+                // If player reaches or passes the target X, trigger the dunk.
+                if (player.x >= targetX) {
+                     player.vx = 0;
+                     player.vy = 20; // Start dunking down
+                     handleScore(b);
+                     b.scored = true;
+                     gameEvents.push({ type: 'SHAKE_SCREEN' });
+                }
+            } else {
+                // --- Falling Phase (With Gravity) ---
+                // After dunking, re-apply gravity for a natural fall.
+                player.vy += GAME_CONFIG.PHYSICS.GRAVITY;
+            }
+
+            if (player.onGround && b.scored && heldBallIndex !== -1) {
+                gameState = STATE.RESET;
+                balls[heldBallIndex].held = false;
+                heldBallIndex = -1;
+                resetRound(false);
+            }
+        }
+    }
+
     let speedMultiplier = currP.usingRainbow ? 1.5 : 1.0;
 
     if (isInfinite) {
@@ -363,6 +418,23 @@ export function updateGameState() {
         if (b.pickupTimer > 0) b.pickupTimer -= 1 / 60;
 
         if (!b.held) {
+            if (b.isGreen) {
+                const cx = HOOP.x + HOOP.w / 2;
+                const entryY = HOOP.y + 5; // Aim slightly higher in the hoop
+                if (b.vy > 0) {
+                    const inCorridor = (b.x > HOOP.x - 30 && b.x < HOOP.x + HOOP.w + 30 && b.y < HOOP.y + 60);
+                    if (inCorridor) {
+                        // Softer, gentler correction force
+                        let nvx = b.vx * 0.8 + (cx - b.x) * 0.1; 
+                        let nvy = b.vy * 0.9 + (entryY - b.y) * 0.12;
+                        if (nvx > 10) nvx = 10; if (nvx < -10) nvx = -10;
+                        if (nvy > 12) nvy = 12; if (nvy < -12) nvy = -12;
+                        b.vx = nvx; b.vy = nvy;
+                    } else {
+                        b.vx = b.vx * 0.98 + (cx - b.x) * 0.008;
+                    }
+                }
+            }
             b.vy += GAME_CONFIG.PHYSICS.GRAVITY; b.x += b.vx; b.y += b.vy;
             if (isInfinite) {
                 if (b.x < 16) { b.x = 16; b.vx *= -GAME_CONFIG.PHYSICS.WALL_BOUNCE_INFINITE; }
@@ -410,7 +482,9 @@ export function updateGameState() {
     }
 
     if (!player.onGround) {
-        player.vy += GAME_CONFIG.PHYSICS.GRAVITY;
+        if (gameState !== STATE.DUNKING) { // Only apply gravity if not dunking
+            player.vy += GAME_CONFIG.PHYSICS.GRAVITY;
+        }
         player.x += player.vx;
         player.y += player.vy;
         if (player.y >= GAME_CONFIG.PHYSICS.GROUND_Y) {

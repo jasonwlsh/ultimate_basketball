@@ -230,7 +230,8 @@ function mainLoop() {
     startScreen.classList.toggle('hidden', Game.gameState !== Game.STATE.MENU);
     charSelectScreen.classList.toggle('hidden', Game.gameState !== Game.STATE.CHAR_SELECT);
     gameOverScreen.classList.toggle('hidden', Game.gameState !== Game.STATE.OVER);
-    uiLayer.style.display = (Game.gameState < Game.STATE.OVER && Game.gameState !== Game.STATE.MENU && Game.gameState !== Game.STATE.CHAR_SELECT) ? 'block' : 'none';
+    const isInGame = Game.gameState !== Game.STATE.MENU && Game.gameState !== Game.STATE.CHAR_SELECT && Game.gameState !== Game.STATE.OVER;
+    uiLayer.style.display = isInGame ? 'block' : 'none';
     btnOpenSettings.style.display = (Game.gameState === Game.STATE.MENU) ? 'flex' : 'none';
 
     if(Game.gameState < Game.STATE.OVER) {
