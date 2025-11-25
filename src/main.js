@@ -153,12 +153,12 @@ window.addEventListener('keydown', (e) => {
         if (Game.gameState === Game.STATE.POS) Game.confirmPosition();
         else if (Game.gameState === Game.STATE.AIMING) Game.handleGameInput();
     }
-    if (e.code === 'ArrowLeft') { e.preventDefault(); moveLeft = true; }
-    if (e.code === 'ArrowRight') { e.preventDefault(); moveRight = true; }
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') { e.preventDefault(); moveLeft = true; }
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') { e.preventDefault(); moveRight = true; }
 });
 window.addEventListener('keyup', (e) => {
-    if (e.code === 'ArrowLeft') moveLeft = false;
-    if (e.code === 'ArrowRight') moveRight = false;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') moveLeft = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') moveRight = false;
 });
 
 
