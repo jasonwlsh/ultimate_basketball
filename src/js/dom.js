@@ -61,4 +61,6 @@ export const rankStatusText = getElement('rank-status-text');
 export const rankValText = getElement('rank-val-text');
 export const rankPercentileText = getElement('rank-percentile-text');
 export const startLbContent = getElement('start-lb-content');
+export const tutorialModal = getElement('tutorial-modal');
+export const btnCloseTutorial = getElement('btn-close-tutorial');
 export const skinUnlockMsg = getElement('skin-unlock-msg');

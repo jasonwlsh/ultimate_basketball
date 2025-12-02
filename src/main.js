@@ -12,7 +12,8 @@ import {
     btnOpenSettings, btnCloseSettings, settingsModal, inputRotate, inputBounce, valBounce,
     btnColPrev, btnColNext, colPreview, lockOverlay, lockMsg, btnUploadBg, bgUploadInput,
     cardX2, cardBig, btnLockPos, gameWrapper, btnViewHistory, btnCloseHistory, historyModal,
-    gameContainer, uiLayer, startScreen, charSelectScreen, gameOverScreen, getElement
+    gameContainer, uiLayer, startScreen, charSelectScreen, gameOverScreen, getElement,
+    tutorialModal, btnCloseTutorial
 } from './js/dom.js';
 
 
@@ -46,7 +47,7 @@ async function initializeApp() {
     UI.updateLocalHighScoreDisplay(localHighScore);
     UI.displayLeaderboard();
     resize();
-    mainLoop();
+    mainLoop(0);
 }
 
 // --- 視窗調整 ---
@@ -54,10 +55,10 @@ function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     let s;
     if (isRotated) {
-        s = Math.min(h / 960, w / 600) * 0.95;
+        s = Math.min(h / 960, w / 600);
         gameWrapper.style.transform = `rotate(90deg) scale(${s})`;
     } else {
-        s = (h > w) ? (w / 960) * 0.95 : Math.min(w / 960, h / 600) * 0.95;
+        s = Math.min(w / 960, h / 600);
         gameWrapper.style.transform = `rotate(0deg) scale(${s})`;
     }
 }
@@ -86,6 +87,14 @@ function applySettings() {
     }
 }
 
+function showTutorial() {
+    tutorialModal.classList.remove('hidden');
+}
+
+function hideTutorial() {
+    tutorialModal.classList.add('hidden');
+}
+
 // --- 事件綁定 ---
 function setPlayerName() {
     let n = inputName.value.trim().toUpperCase();
@@ -98,11 +107,13 @@ function setPlayerName() {
 btn1P.onclick = () => { setPlayerName(); pendingMode = { players: 1, infinite: false }; Game.setGameState(Game.STATE.CHAR_SELECT); };
 btnInf.onclick = () => { setPlayerName(); pendingMode = { players: 1, infinite: true }; Game.setGameState(Game.STATE.CHAR_SELECT); };
 btn2P.onclick = () => { pendingMode = { players: 2, infinite: false }; Game.setGameState(Game.STATE.CHAR_SELECT); };
-btnConfirmChar.onclick = () => { 
+btnConfirmChar.onclick = () => {
+    showTutorial();
     UI.setupGameUI(pendingMode.infinite, pendingMode.players);
-    Game.startGame(pendingMode.players, pendingMode.infinite); 
+    Game.startGame(pendingMode.players, pendingMode.infinite);
     UI.updateTopBarUI(Game); // Immediately update UI after state is initialized
 };
+btnCloseTutorial.onclick = hideTutorial;
 btnRestart.onclick = () => { Game.setGameState(Game.STATE.MENU); UI.showStartScreenUI(); };
 btnExitGame.onclick = (e) => { e.stopPropagation(); Game.setGameState(Game.STATE.MENU); UI.showStartScreenUI(); };
 cardX2.onclick = (e) => { e.stopPropagation(); Game.usePowerup('x2'); };
@@ -164,7 +175,15 @@ window.addEventListener('keyup', (e) => {
 
 // --- 遊戲主迴圈 ---
 let previousGameState = -1;
-function mainLoop() {
+let lastTime = 0;
+
+function mainLoop(currentTime) {
+    if (lastTime === 0) {
+        lastTime = currentTime;
+    }
+    const deltaTime = (currentTime - lastTime) / 1000;
+    lastTime = currentTime;
+
     // 0. 偵測狀態改變，執行一次性動作
     if (Game.gameState !== previousGameState) {
         if (Game.gameState === Game.STATE.CHAR_SELECT) {
@@ -175,7 +194,7 @@ function mainLoop() {
     }
 
     // 1. 更新遊戲邏輯
-    Game.updateGameState();
+    Game.updateGameState(deltaTime);
     
     // 2. 處理遊戲事件
     const events = Game.popGameEvents();
@@ -217,14 +236,15 @@ function mainLoop() {
     if (moveLeft || moveRight) {
         let s = GAME_CONFIG.CHARACTERS[Game.selectedChar].speed;
         let currentX = Game.player.x;
-        if (moveLeft) currentX -= s; if (moveRight) currentX += s;
+        if (moveLeft) currentX -= s * deltaTime * 60;
+        if (moveRight) currentX += s * deltaTime * 60;
         let maxR = Game.isInfinite ? canvas.width - 50 : GAME_CONFIG.COURT.THREE_POINT_X + 200;
         Game.setPlayerX(Math.max(50, Math.min(maxR, currentX)));
     }
     if (Game.heldBallIndex !== -1) Game.setHeldBallPosition();
     
-    UI.updateParticles(particles);
-    UI.updateFloatScores(floatScores);
+    UI.updateParticles(particles, deltaTime);
+    UI.updateFloatScores(floatScores, deltaTime);
 
     // 根據遊戲狀態顯示不同畫面
     startScreen.classList.toggle('hidden', Game.gameState !== Game.STATE.MENU);
@@ -237,7 +257,7 @@ function mainLoop() {
     if(Game.gameState < Game.STATE.OVER) {
          UI.updateCountdownWarning(Game.infiniteTimer);
          UI.togglePositionUI(Game.gameState === Game.STATE.POS);
-         if(Game.gameState === Game.STATE.POS) UI.toggleTutorial(true, "DRAG OR USE ARROWS TO MOVE");
+         if(Game.gameState === Game.STATE.POS) UI.toggleTutorial(true, "USE ARROW KEYS TO MOVE");
          else if(Game.gameState === Game.STATE.PICKUP) UI.toggleTutorial(true, "GET THE BALL!");
          else UI.toggleTutorial(false);
     }

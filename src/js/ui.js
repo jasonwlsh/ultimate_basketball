@@ -106,6 +106,11 @@ export function setupGameUI(isInfinite, numPlayers) {
     DOM.getElement('p2-end-score').style.display = numPlayers === 2 ? 'block' : 'none';
 
     const powerupBar = DOM.getElement('game-container').querySelector('.powerup-bar');
+    const powerupCards = DOM.getElement('game-container').querySelector('.powerup-cards');
+
+    if (powerupCards) {
+        powerupCards.style.display = isInfinite ? 'none' : 'flex';
+    }
 
     if (isInfinite) {
         DOM.ballLabelP1.innerText = "TIME";
@@ -263,11 +268,12 @@ export function spawnParticles(particles, x, y, count, colors) {
     }
 }
 
-export function updateParticles(particles) {
+export function updateParticles(particles, dt) {
+    const multiplier = dt / (1 / 60);
     for (let i = particles.length - 1; i >= 0; i--) {
-        particles[i].x += particles[i].vx;
-        particles[i].y += particles[i].vy;
-        particles[i].life -= 0.05;
+        particles[i].x += particles[i].vx * multiplier;
+        particles[i].y += particles[i].vy * multiplier;
+        particles[i].life -= 0.05 * multiplier;
         if (particles[i].life <= 0) particles.splice(i, 1);
     }
 }
@@ -281,10 +287,11 @@ export function spawnFloatScore(floatScores, points, x, y, text) {
     });
 }
 
-export function updateFloatScores(floatScores) {
+export function updateFloatScores(floatScores, dt) {
+    const multiplier = dt / (1 / 60);
     for (let i = floatScores.length - 1; i >= 0; i--) {
-        floatScores[i].y -= 1;
-        floatScores[i].life -= 0.02;
+        floatScores[i].y -= 1 * multiplier;
+        floatScores[i].life -= 0.02 * multiplier;
         if (floatScores[i].life <= 0) floatScores.splice(i, 1);
     }
 }

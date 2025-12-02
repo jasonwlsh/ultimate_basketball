@@ -197,7 +197,7 @@ function launchBall() {
         let vel = calculateLaunchVelocity(aimOscillator, heldBallIndex);
         b.vx = vel.vx; 
         b.vy = vel.vy; 
-        b.pickupTimer = 0.5;
+        b.pickupTimer = 0.2;
         
         b.held = false;
         heldBallIndex = -1;
@@ -339,7 +339,10 @@ function handleAirball() {
 }
 
 // --- 每幀更新 ---
-export function updateGameState() {
+export function updateGameState(dt) {
+    const sixtyFpsDt = 1 / 60;
+    const multiplier = dt / sixtyFpsDt;
+
     hue = (hue + 1) % 360;
     if (gameState === STATE.MENU || gameState === STATE.OVER || gameState === STATE.CHAR_SELECT) return;
 
@@ -363,7 +366,7 @@ export function updateGameState() {
             } else {
                 // --- Falling Phase (With Gravity) ---
                 // After dunking, re-apply gravity for a natural fall.
-                player.vy += GAME_CONFIG.PHYSICS.GRAVITY;
+                player.vy += GAME_CONFIG.PHYSICS.GRAVITY * multiplier;
             }
 
             if (player.onGround && b.scored && heldBallIndex !== -1) {
@@ -378,13 +381,13 @@ export function updateGameState() {
     let speedMultiplier = currP.usingRainbow ? 1.5 : 1.0;
 
     if (isInfinite) {
-        infiniteTimer -= 1 / 60;
+        infiniteTimer -= dt;
         if (infiniteTimer <= 0) { infiniteTimer = 0; endGame(); }
         if (neonZone.active) {
-            neonZone.timer -= 1 / 60;
+            neonZone.timer -= dt;
             if (neonZone.timer <= 0) { neonZone.active = false; neonZone.cooldown = GAME_CONFIG.GAME.HOT_ZONE_RESPAWN_DELAY; }
         } else {
-            if (neonZone.cooldown > 0) neonZone.cooldown -= 1/60;
+            if (neonZone.cooldown > 0) neonZone.cooldown -= dt;
             else spawnNeonZone();
         }
     }
@@ -412,10 +415,10 @@ export function updateGameState() {
 
     balls.forEach(b => {
         if (b.scoreTimer > 0) {
-            b.scoreTimer -= 1 / 60;
+            b.scoreTimer -= dt;
             if (b.scoreTimer <= 0 && isInfinite) recycleBall(b);
         }
-        if (b.pickupTimer > 0) b.pickupTimer -= 1 / 60;
+        if (b.pickupTimer > 0) b.pickupTimer -= dt;
 
         if (!b.held) {
             if (b.isGreen) {
@@ -435,12 +438,15 @@ export function updateGameState() {
                     }
                 }
             }
-            b.vy += GAME_CONFIG.PHYSICS.GRAVITY; b.x += b.vx; b.y += b.vy;
+            b.vy += GAME_CONFIG.PHYSICS.GRAVITY * multiplier;
+            b.x += b.vx * multiplier;
+            b.y += b.vy * multiplier;
             if (isInfinite) {
                 if (b.x < 16) { b.x = 16; b.vx *= -GAME_CONFIG.PHYSICS.WALL_BOUNCE_INFINITE; }
                 if (b.x > 960 - 16) { b.x = 960 - 16; b.vx *= -GAME_CONFIG.PHYSICS.WALL_BOUNCE_INFINITE; }
             }
-            b.vx *= GAME_CONFIG.PHYSICS.AIR_FRICTION; b.vy *= GAME_CONFIG.PHYSICS.AIR_FRICTION;
+            b.vx *= Math.pow(GAME_CONFIG.PHYSICS.AIR_FRICTION, multiplier);
+            b.vy *= Math.pow(GAME_CONFIG.PHYSICS.AIR_FRICTION, multiplier);
 
             if (Math.hypot(b.x - (HOOP.x + HOOP.w / 2), b.y - HOOP.y) < b.minDistToHoop) b.minDistToHoop = Math.hypot(b.x - (HOOP.x + HOOP.w / 2), b.y - HOOP.y);
             
@@ -468,25 +474,25 @@ export function updateGameState() {
     });
     
     if (gameState === STATE.AIMING) {
-        aimOscillator += GAME_CONFIG.METER.SPEED * aimDirection * speedMultiplier;
+        aimOscillator += GAME_CONFIG.METER.SPEED * aimDirection * speedMultiplier * multiplier;
         if (aimOscillator >= 1 || aimOscillator <= 0) aimDirection *= -1;
     }
     
     if (floatingItem.active) {
-        floatingItem.offset += floatingItem.dir * 0.5;
+        floatingItem.offset += floatingItem.dir * 0.5 * multiplier;
         if (Math.abs(floatingItem.offset) > 8) floatingItem.dir *= -1;
         if (floatingItem.spawning) {
-            floatingItem.scale += 0.1;
+            floatingItem.scale += 0.1 * multiplier;
             if (floatingItem.scale >= 1.2) { floatingItem.scale = 1; floatingItem.spawning = false; }
         }
     }
 
     if (!player.onGround) {
         if (gameState !== STATE.DUNKING) { // Only apply gravity if not dunking
-            player.vy += GAME_CONFIG.PHYSICS.GRAVITY;
+            player.vy += GAME_CONFIG.PHYSICS.GRAVITY * multiplier;
         }
-        player.x += player.vx;
-        player.y += player.vy;
+        player.x += player.vx * multiplier;
+        player.y += player.vy * multiplier;
         if (player.y >= GAME_CONFIG.PHYSICS.GROUND_Y) {
             player.y = GAME_CONFIG.PHYSICS.GROUND_Y;
             player.vy = 0; player.vx = 0; player.onGround = true;

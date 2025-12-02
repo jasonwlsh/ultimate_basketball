@@ -15,6 +15,18 @@
         <canvas id="gameCanvas" width="960" height="600"></canvas>
         <button class="retro-btn settings-btn" id="btn-open-settings">SETTINGS ⚙️</button>
         <div class="ui-layer" id="game-ui" style="display:none;">
+            <div class="powerup-cards">
+                <div class="powerup-card" id="card-x2">
+                    <div class="card-title">X2</div>
+                    <div class="card-desc">SCORE</div>
+                    <div class="card-count" id="count-x2">0</div>
+                </div>
+                <div class="powerup-card" id="card-big">
+                    <div class="card-title">BIG</div>
+                    <div class="card-desc">HOOP</div>
+                    <div class="card-count" id="count-big">0</div>
+                </div>
+            </div>
             <div class="top-bar">
                 <div class="score-container">
                     <div class="player-panel p1-group" id="p1-panel">
@@ -82,6 +94,16 @@
             </div>
         </div>
         <div id="turn-msg">P1 READY</div>
+        <div id="tutorial-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">HOW TO PLAY</div>
+                <div style="text-align: left; line-height: 1.8; font-size: 0.9rem; padding: 0 20px;">
+                    <p><strong>MOVE:</strong> Use the Left/Right arrow keys to move.</p>
+                    <p><strong>SHOOT:</strong> Press Spacebar. Press again on the green bar to shoot, or the gold bar to dunk!</p>
+                </div>
+                <button class="modal-btn" id="btn-close-tutorial">GOT IT!</button>
+            </div>
+        </div>
         <div id="game-over" class="overlay-screen hidden">
             <div class="title-text" id="go-title">GAME OVER</div><div id="new-record-msg" class="new-record-anim hidden" style="font-size: 1.2rem; margin-bottom: 10px;">NEW PERSONAL RECORD!</div>
             <div style="font-size: 1.5rem; margin-bottom: 10px; text-align: center; line-height: 2;"><div style="color:#f1c40f;">SCORE: <span id="end-p1">0</span></div><div id="p2-end-score" style="color:#00ffff;">P2 SCORE: <span id="end-p2">0</span></div></div>
